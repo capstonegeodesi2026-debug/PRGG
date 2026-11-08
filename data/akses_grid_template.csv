@@ -1,0 +1,4 @@
+grid_id,faculty_id,faculty_name,distance_faculty_m,distance_minimarket_m,distance_worship_m,median_price,accommodation_count
+G001,FT,Gerbang Fakultas Teknik,1250.5,230.4,410.2,1200000,8
+G002,FT,Gerbang Fakultas Teknik,980.2,310.0,275.8,1100000,5
+G001,FEB,Gerbang Fakultas Ekonomika dan Bisnis,1450.0,230.4,410.2,1200000,8

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sinduadi Housing Explorer</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">WEBGIS • CAPSTONE TEKNIK GEODESI</p>
+      <h1>Sinduadi Housing Explorer</h1>
+      <p class="subtitle">Dashboard persebaran dan aksesibilitas kos & penginapan</p>
+    </div>
+    <span class="demo-badge">DATA SIMULASI</span>
+  </header>
+
+  <main class="layout">
+    <aside class="panel controls">
+      <h2>Preferensi pencarian</h2>
+      <label for="facultySelect">Fakultas tujuan</label>
+      <select id="facultySelect"><option value="ugm">Kawasan UGM (contoh)</option></select>
+
+      <label for="budgetSelect">Anggaran maksimal / bulan</label>
+      <select id="budgetSelect">
+        <option value="1000000">Rp1.000.000</option>
+        <option value="1500000" selected>Rp1.500.000</option>
+        <option value="2000000">Rp2.000.000</option>
+        <option value="3000000">Rp3.000.000</option>
+      </select>
+
+      <h3>Bobot kriteria</h3>
+      <p class="hint">Atur kepentingan tiap kriteria. Bobot akan dinormalisasi otomatis.</p>
+      <div class="weight-control">
+        <label for="facultyWeight">Akses fakultas <strong id="facultyWeightValue">50%</strong></label>
+        <input id="facultyWeight" class="weight-slider" type="range" min="0" max="100" value="50">
+      </div>
+      <div class="weight-control">
+        <label for="marketWeight">Minimarket <strong id="marketWeightValue">20%</strong></label>
+        <input id="marketWeight" class="weight-slider" type="range" min="0" max="100" value="20">
+      </div>
+      <div class="weight-control">
+        <label for="worshipWeight">Rumah ibadah <strong id="worshipWeightValue">10%</strong></label>
+        <input id="worshipWeight" class="weight-slider" type="range" min="0" max="100" value="10">
+      </div>
+      <div class="weight-control">
+        <label for="priceWeight">Harga kawasan <strong id="priceWeightValue">20%</strong></label>
+        <input id="priceWeight" class="weight-slider" type="range" min="0" max="100" value="20">
+      </div>
+      <p class="weight-total">Total bobot setelah normalisasi: <strong id="weightTotal">100%</strong></p>
+      <button id="resetButton" class="secondary-button" type="button">Reset pengaturan</button>
+      <p class="footnote">Skor demo hanya untuk menguji fungsi. Bobot dan data harus diganti/ditetapkan berdasarkan metode penelitian.</p>
+    </aside>
+
+    <section class="map-panel">
+      <div class="section-heading">
+        <div><h2>Peta rekomendasi kawasan</h2><p class="hint">Klik grid untuk melihat atributnya.</p></div>
+        <div class="legend"><span class="legend-dot good"></span> Skor tinggi <span class="legend-dot mid"></span> Sedang <span class="legend-dot low"></span> Rendah</div>
+      </div>
+      <div id="map" aria-label="Peta interaktif kawasan Sinduadi"></div>
+    </section>
+
+    <aside class="panel ranking-panel">
+      <h2>Rekomendasi grid</h2>
+      <p class="hint">Urutan dihitung dari skor demo dan filter anggaran.</p>
+      <div class="stats">
+        <div class="stat"><span>Grid memenuhi filter</span><strong id="gridCount">—</strong></div>
+        <div class="stat"><span>Kos sesuai anggaran</span><strong id="accommodationCount">—</strong></div>
+        <div class="stat"><span>Skor tertinggi</span><strong id="topScore">—</strong></div>
+      </div>
+      <div id="rankingList" class="ranking-list"></div>
+      <div id="gridDetails" class="details empty">Klik salah satu grid atau rekomendasi untuk melihat detail.</div>
+    </aside>
+  </main>
+
+  <footer>Demo awal WebGIS • Leaflet + JavaScript • Ganti data simulasi dengan hasil analisis QGIS sebelum digunakan dalam penelitian.</footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
