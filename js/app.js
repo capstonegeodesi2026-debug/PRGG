@@ -111,7 +111,12 @@
     return String(p[F.kosPriceUnit] || '').toLowerCase() === b.unit && Number.isFinite(h) && h >= b.min && h <= b.max; };
   const visKos = () => kos ? kos.features.filter(f => (!S.type || f.properties[F.kosType] === S.type) && inBand(f.properties)) : [];
   const rupiah = v => 'Rp' + Number(v).toLocaleString('id-ID', { maximumFractionDigits: 0 });
-  const photo = p => p[F.kosPhoto] ? `<img class="kphoto" src="${esc(CONFIG.photoDir + p[F.kosPhoto])}" alt="Foto ${esc(p[F.kosName] || '')}" width="320" height="200" loading="lazy" decoding="async" onerror="this.remove()">` : '';
+  // Nama berkas foto: kolom foto tanpa ekstensi + CONFIG.photoExt (data tidak diubah).
+  const photoSrc = name => CONFIG.photoDir + (CONFIG.photoExt ? String(name).replace(/\.[^./]+$/, '') + CONFIG.photoExt : name);
+  const photo = p => p[F.kosPhoto] ? `<figure class="kphoto-wrap"><img class="kphoto" src="${esc(photoSrc(p[F.kosPhoto]))}" alt="${esc(p[F.kosName] || p[F.kosId] || 'Foto kost')}" width="320" height="200" loading="lazy" decoding="async"></figure>` : '';
+  // Foto gagal dimuat: bingkai foto disembunyikan dan diganti catatan singkat, tanpa error tambahan.
+  document.addEventListener('error', e => { const img = e.target; if (img && img.classList && img.classList.contains('kphoto')) {
+    const fig = img.closest('.kphoto-wrap'); if (fig) { fig.classList.add('nofoto'); fig.innerHTML = '<figcaption>Foto belum tersedia</figcaption>'; } } }, true);
   const kosRows = p => { const fid = $('facultySelect').value, link = safeUrl(p.link_gmaps), g = S.byGrid && S.byGrid.get(p[F.kosGrid]);
     return [['ID', p[F.kosId]], ['Jenis', typeLabel(p[F.kosType])], ['Harga', Number.isFinite(+p[F.kosPrice]) && p[F.kosPrice] !== null ? `${rupiah(p[F.kosPrice])} per ${p[F.kosPriceUnit] || '-'}` : null], ['Padukuhan', p.padukuhan], ['Alamat', p.alamat],
       ['Rating Google', p.rating !== null && p.rating !== undefined ? num(p.rating, 1) : null],

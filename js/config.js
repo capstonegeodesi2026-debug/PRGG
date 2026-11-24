@@ -26,8 +26,10 @@ const CONFIG = {
             kosPrice: 'harga', kosPriceUnit: 'satuan_harga', kosPhoto: 'foto',
             facId: 'faculty_id', facName: 'nama_fakultas', routeKos: 'id_kos', routeFac: 'faculty_id',
             routeDist: 'panjang_rute_m', routeTime: 'waktu_menit', routeShort: 'jarak_terpendek_m' },
-  // Foto kost: letakkan berkas (nama sesuai kolom foto, misalnya KPI-KT-01.png) di folder ini. Foto yang tidak ada disembunyikan.
+  // Foto kost hasil tools/optimasi_foto.py. Kolom foto berisi nama asli (misalnya KPI-KT-01.png). Dashboard memakai
+  // nama yang sama tanpa ekstensi + photoExt, jadi KPI-KT-01.png dibaca dari data/foto/KPI-KT-01.webp. Foto yang gagal dimuat disembunyikan.
   photoDir: 'data/foto/',
+  photoExt: '.webp',
   // Rentang harga untuk filter. unit harus sama dengan isi kolom satuan_harga.
   priceBands: [
     { id: 'b1', unit: 'bulan', label: 'Kurang dari Rp750.000 per bulan', min: 0, max: 750000 },
