@@ -70,7 +70,7 @@ const MapView = (() => {
     L.polyline(coords, { color: '#fff', weight: 9, opacity: .95 }).addTo(routeGroup);
     const line = L.polyline(coords, { color: '#e11d48', weight: 5, opacity: 1 }).addTo(routeGroup);
     L.circleMarker(startLL, { radius: 8, color: '#fff', weight: 3, fillColor: '#2563eb', fillOpacity: 1 }).bindTooltip('Awal: ' + esc(startName), { permanent: false }).addTo(routeGroup);
-    L.circleMarker(endLL, { radius: 8, color: '#fff', weight: 3, fillColor: '#14532d', fillOpacity: 1 }).bindTooltip('Tujuan: ' + esc(endName)).addTo(routeGroup);
+    L.circleMarker(endLL, { radius: 8, color: '#fff', weight: 3, fillColor: '#0F2A44', fillOpacity: 1 }).bindTooltip('Tujuan: ' + esc(endName)).addTo(routeGroup);
     map.fitBounds(line.getBounds(), { padding: [50, 50] });
   }
   function legend(el, items, range) {

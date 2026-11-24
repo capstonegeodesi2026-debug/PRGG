@@ -2,7 +2,7 @@
 const Pages = (() => {
   const $ = id => document.getElementById(id), KEY = 'sinduadi.onboarded', R = CONFIG.research;
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const ic = d => `<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="#14532d" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const ic = d => `<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="#0F2A44" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
   const SLIDES = [
     { t: 'Pilih Tujuan Kampus', i: ic('<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/>'),
       x: 'Ada 20 tujuan berupa gerbang fakultas dan titik jemput di kampus UGM. Tujuan yang dipilih menentukan waktu tempuh dari setiap grid, sehingga warna peta dan peringkat ikut berubah.' },

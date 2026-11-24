@@ -58,7 +58,7 @@ const CONFIG = {
   ],
   // Layer titik. index: true = dipakai dalam skor. Fasilitas lain hanya ditampilkan.
   layers: {
-    fakultas:     { label: 'Tujuan kampus (gerbang/titik jemput)', color: '#14532d', icon: 'cap' },
+    fakultas:     { label: 'Tujuan kampus (gerbang/titik jemput)', color: '#0F2A44', icon: 'cap' },
     akomodasi:    { label: 'Kost dan penginapan',  color: '#2563eb', icon: 'house' },
     halte:        { label: 'Halte Trans Jogja', color: '#f97316', icon: 'bus',      file: 'data/fasum/halte.geojson',        id: 'id_fas', name: 'nama', index: true },
     minimarket:   { label: 'Minimarket',        color: '#0891b2', icon: 'cart',     file: 'data/fasum/minimarket.geojson',   id: 'id_fas', name: 'nama', index: true },
