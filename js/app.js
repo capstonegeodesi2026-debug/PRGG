@@ -105,7 +105,7 @@
   /* ---------- Peta ---------- */
   await yieldUI();
   if (batas) MapView.setBoundary(batas);
-  if (grid) MapView.setGrid(grid, id => select(id, true)); await yieldUI();
+  if (grid) await MapView.setGrid(grid, id => select(id, true)); await yieldUI();
   const popBase = (title, rows) => `<div class="pop"><b>${esc(title)}</b><table>${rows.filter(r => r[1] !== undefined && r[1] !== null && r[1] !== '').map(r => `<tr><td>${esc(r[0])}</td><td>${r[2] ? r[1] : esc(r[1])}</td></tr>`).join('')}</table></div>`;
   const isInap = p => /penginapan|hotel|homestay|guest/i.test(p[F.kosType] || '');
   const facCol = fid => String(fid || '').replace('-', '');          // TP-001 -> TP001

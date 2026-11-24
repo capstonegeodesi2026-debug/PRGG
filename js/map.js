@@ -62,13 +62,17 @@ const MapView = (() => {
   function setBoundary(fc) {
     boundary = L.geoJSON(fc, { interactive: false, style: { color: '#0f3d24', weight: 2.5, dashArray: '6 4', fill: false } }).addTo(map);
   }
-  function setGrid(fc, onClick) {
+  /* 4.285 poligon dibuat bertahap (UI.gridChunk fitur per tugas) agar tidak ada satu tugas panjang yang memblokir halaman. */
+  async function setGrid(fc, onClick) {
     gridById = {}; lastStyle = {};
-    gridLayer = L.geoJSON(fc, { style: { color: '#475569', weight: 1, fillOpacity: .5, fillColor: '#9ca3af' },
+    gridLayer = L.geoJSON(null, { style: { color: '#475569', weight: 1, fillOpacity: .5, fillColor: '#9ca3af' },
       onEachFeature: (f, l) => { const id = f.properties[CONFIG.fields.grid]; gridById[id] = l;
         // Tooltip hanya di perangkat yang bisa hover. Padanan ketuknya adalah lembar ringkasan grid (app.js).
         if (canHover()) l.bindTooltip(() => tip(id), { sticky: true, direction: 'top', offset: [0, -8] });
-        l.on('click', () => onClick(id)); } }).addTo(map);
+        l.on('click', () => onClick(id)); } });
+    const feats = fc.features || [], n = UI.gridChunk || feats.length;
+    for (let i = 0; i < feats.length; i += n) { gridLayer.addData({ type: 'FeatureCollection', features: feats.slice(i, i + n) }); await new Promise(r => setTimeout(r, 0)); }
+    gridLayer.addTo(map);
     layers.grid = gridLayer; gridLayer.bringToBack();
     fit();
   }

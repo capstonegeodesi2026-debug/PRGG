@@ -62,6 +62,8 @@ const Pages = (() => {
     const welcome = $('page-welcome');
     const animate = prev === 'welcome' && v === 'dashboard' && !reduced() && welcome.classList.contains('active');
     document.querySelectorAll('.page').forEach(p => { if (!(animate && p === welcome)) p.classList.toggle('active', p.id === 'page-' + v); });
+    // Dashboard disembunyikan (visibility) selama halaman lain menutupinya: tidak ada kerja render dan pergeseran tata letak di belakang layar.
+    document.body.classList.toggle('on-page', v !== 'dashboard');
     document.querySelectorAll('[data-view]').forEach(a => a.classList.toggle('current', a.dataset.view === v));
     $('navLinks').classList.remove('open'); $('burger').setAttribute('aria-expanded', 'false'); window.scrollTo(0, 0);
     if (animate) welcomeToDashboard(welcome);
@@ -113,14 +115,30 @@ const Pages = (() => {
   function start() { store.get() ? show('dashboard') : openGuide(); }
 
   function build() {
-    $('aboutBody').innerHTML = `<h1>Tentang</h1>
-      <h2>Tentang Website</h2><p>SINDUADI SPATIAL adalah dashboard WebGIS untuk mengeksplorasi persebaran kost dan penginapan serta menganalisis aksesibilitas kawasan di Kalurahan Sinduadi, Kapanewon Mlati, Kabupaten Sleman.</p>
-      <h2>Latar Belakang</h2><p>Memilih hunian di sekitar kampus bergantung pada seberapa mudah kawasan itu menjangkau fakultas dan fasilitas sehari-hari. Informasi spasial yang terstruktur tentang persebaran akomodasi dan aksesibilitasnya membantu mahasiswa maupun masyarakat umum membandingkan kawasan secara lebih objektif.</p>
-      <h2>Tujuan</h2><ul><li>Menampilkan persebaran 137 kost dan penginapan di Sinduadi.</li><li>Mengukur aksesibilitas kawasan ke 20 gerbang dan titik jemput kampus UGM melalui jaringan jalan.</li><li>Mengelompokkan kawasan ke lima kelas aksesibilitas.</li><li>Menyediakan peta interaktif yang bisa dibuka di laptop maupun ponsel.</li></ul>
-      <h2>Metodologi</h2><ol><li>Jaringan jalan Kabupaten Sleman dan Kota Yogyakarta dipotong pada penyangga 1,5 km, dibersihkan topologinya, lalu diberi kecepatan menurut kelas jalan. Dasarnya PM 111/2015 untuk arteri, kolektor, dan lokal, serta UU 2/2022 dan PP 34/2006 untuk jalan lingkungan sekunder di kawasan perkotaan.</li><li>Wilayah dibagi menjadi 4.285 grid segi enam. Titik pusat grid menjadi titik asal.</li><li>OD Matrix QNEAT3 menghitung waktu tempuh ke 20 tujuan dan jarak jaringan ke halte, minimarket, dan fasilitas kesehatan terdekat.</li><li>Kerapatan simpang (derajat simpul tiga atau lebih) dihitung dalam radius 500 m dari titik pusat grid.</li><li>Setiap kriteria diubah ke persentil, dikalikan bobot AHP (CR 0,021), lalu dijumlahkan menjadi skor 0 sampai 100. Mengubah satu bobot sebesar 20% hanya memindahkan 1,1% sampai 10,4% kawasan satu kelas.</li><li>Skor dibagi menjadi lima kelas dengan interval sama dan ditampilkan dengan Leaflet.js.</li></ol>
-      <h2>Keterbatasan</h2><p>Kecepatan memakai batas dan kecepatan rencana menurut kelas jalan, bukan kecepatan lalu lintas aktual, sehingga waktu pada jam sibuk dapat lebih lama. Arah jalan satu arah belum dimodelkan. Skor bersifat relatif terhadap grid lain di Sinduadi. Data fasilitas di dalam kost belum tersedia sehingga belum dapat dipakai sebagai filter.</p>
-      <h2>Informasi Penelitian</h2><table class="info"><tr><th>Judul</th><td>${esc(R.judul)}</td></tr><tr><th>Peneliti</th><td>${esc(R.peneliti)}</td></tr><tr><th>Program Studi</th><td>${esc(R.prodi)}</td></tr><tr><th>Fakultas</th><td>${esc(R.fakultas)}</td></tr><tr><th>Tahun</th><td>${esc(R.tahun)}</td></tr></table>
-      <p><button class="primary" data-view="dashboard">Buka Dashboard</button></p>`;
+    /* Halaman Tentang: empat bagian, masing-masing setinggi satu layar di desktop. Teks dari laporan, foto kost dari data/foto. */
+    const photoSrc = name => CONFIG.photoDir + (CONFIG.photoExt ? String(name).replace(/\.[^./]+$/, '') + CONFIG.photoExt : name);
+    const ph = (i, cls) => { const p = (CONFIG.aboutPhotos || [])[i]; return p ? `<div class="ph${cls ? ' ' + cls : ''}"><img src="${esc(photoSrc(p.foto))}" alt="${esc('Foto ' + p.nama)}" width="800" height="600" loading="lazy" decoding="async"></div>` : ''; };
+    const crit = CONFIG.criteria, tot = crit.reduce((s, c) => s + c.weight, 0);
+    const pct = v => (v / tot * 100).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+    $('heroLegend').innerHTML = CONFIG.classes.slice().reverse().map(c => `<li><span class="sw" style="background:${c.color}"></span>${c.k} ${esc(c.label)}</li>`).join('');
+    $('aboutBody').innerHTML = `
+      <section class="ab-sec" aria-labelledby="ab1"><div class="ab-wrap ab-split">
+        <div class="ab-text"><p class="eyebrow">Tentang</p><h1 id="ab1">Tentang Sinduadi Spatial</h1>
+          <p class="lead">SINDUADI SPATIAL adalah dashboard WebGIS untuk mengeksplorasi persebaran kost dan penginapan serta menganalisis aksesibilitas kawasan di Kalurahan Sinduadi, Kapanewon Mlati, Kabupaten Sleman.</p>
+          <h2>Latar belakang</h2><p>Memilih hunian di sekitar kampus bergantung pada seberapa mudah kawasan itu menjangkau fakultas dan fasilitas sehari-hari. Informasi spasial yang terstruktur tentang persebaran akomodasi dan aksesibilitasnya membantu mahasiswa maupun masyarakat umum membandingkan kawasan secara lebih objektif.</p></div>
+        <div class="ab-photos ab-photos-3">${ph(0, 'tall')}${ph(1)}${ph(2)}</div></div></section>
+      <section class="ab-sec" aria-labelledby="ab2"><div class="ab-wrap ab-split ab-rev">
+        <div class="ab-photos ab-photos-2">${ph(3)}${ph(4)}</div>
+        <div class="ab-text"><h2 id="ab2">Tujuan penelitian</h2><ol class="ab-list"><li>Menampilkan persebaran 137 kost dan penginapan di Sinduadi.</li><li>Mengukur aksesibilitas kawasan ke 20 gerbang dan titik jemput kampus UGM melalui jaringan jalan.</li><li>Mengelompokkan kawasan ke lima kelas aksesibilitas.</li><li>Menyediakan peta interaktif yang bisa dibuka di laptop maupun ponsel.</li></ol></div></div></section>
+      <section class="ab-sec" aria-labelledby="ab3"><div class="ab-wrap">
+        <h2 id="ab3">Metodologi</h2>
+        <div class="ab-method"><ol class="ab-steps"><li>Jaringan jalan Kabupaten Sleman dan Kota Yogyakarta dipotong pada penyangga 1,5 km, dibersihkan topologinya, lalu diberi kecepatan menurut kelas jalan. Dasarnya PM 111/2015 untuk arteri, kolektor, dan lokal, serta UU 2/2022 dan PP 34/2006 untuk jalan lingkungan sekunder di kawasan perkotaan.</li><li>Wilayah dibagi menjadi 4.285 grid segi enam. Titik pusat grid menjadi titik asal.</li><li>OD Matrix QNEAT3 menghitung waktu tempuh ke 20 tujuan dan jarak jaringan ke halte, minimarket, dan fasilitas kesehatan terdekat.</li><li>Kerapatan simpang (derajat simpul tiga atau lebih) dihitung dalam radius 500 m dari titik pusat grid.</li><li>Setiap kriteria diubah ke persentil, dikalikan bobot AHP (CR 0,021), lalu dijumlahkan menjadi skor 0 sampai 100. Mengubah satu bobot sebesar 20% hanya memindahkan 1,1% sampai 10,4% kawasan satu kelas.</li><li>Skor dibagi menjadi lima kelas dengan interval sama dan ditampilkan dengan Leaflet.js.</li></ol>
+          <div class="ab-weights"><h3>Bobot kriteria AHP</h3>${crit.map(c => `<div class="wb"><span class="wb-l">${esc(c.label)}</span><span class="wb-bar" aria-hidden="true"><i style="width:${(c.weight / tot * 100).toFixed(2)}%"></i></span><b>${pct(c.weight)}</b></div>`).join('')}
+            <h3>Kelas aksesibilitas</h3><ul class="hero-legend ab-classes">${CONFIG.classes.slice().reverse().map(c => `<li><span class="sw" style="background:${c.color}"></span>${c.k} ${esc(c.label)}</li>`).join('')}</ul></div></div></div></section>
+      <section class="ab-sec" aria-labelledby="ab4"><div class="ab-wrap ab-split">
+        <div class="ab-text"><h2 id="ab4">Keterbatasan</h2><p>Kecepatan memakai batas dan kecepatan rencana menurut kelas jalan, bukan kecepatan lalu lintas aktual, sehingga waktu pada jam sibuk dapat lebih lama. Arah jalan satu arah belum dimodelkan. Skor bersifat relatif terhadap grid lain di Sinduadi. Data fasilitas di dalam kost belum tersedia sehingga belum dapat dipakai sebagai filter.</p>
+          <p class="cta"><button type="button" class="primary big" data-view="dashboard">Buka dashboard</button></p></div>
+        <div class="ab-text"><h2>Informasi penelitian</h2><table class="info"><tr><th>Judul</th><td>${esc(R.judul)}</td></tr><tr><th>Peneliti</th><td>${esc(R.peneliti)}</td></tr><tr><th>Program Studi</th><td>${esc(R.prodi)}</td></tr><tr><th>Fakultas</th><td>${esc(R.fakultas)}</td></tr><tr><th>Tahun</th><td>${esc(R.tahun)}</td></tr></table></div></div></section>`;
     const chev = '<svg class="chev" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
     $('faqList').innerHTML = FAQ.map((f, i) => `<div class="faq-item"><h2 class="faq-h"><button type="button" class="faq-q" id="faq-q-${i}" aria-expanded="false" aria-controls="faq-a-${i}"><span>${i + 1}. ${esc(f[0])}</span>${chev}</button></h2>
       <div class="faq-a" id="faq-a-${i}" role="region" aria-labelledby="faq-q-${i}" hidden><p>${esc(f[1])}</p></div></div>`).join('');
