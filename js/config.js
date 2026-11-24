@@ -11,6 +11,10 @@ const CONFIG = {
   // dan zoom minimum ikon tampil penuh (di bawahnya lingkaran ikon diperkecil agar warna grid terbaca).
   // dataDelayMax: batas tunggu (ms) sebelum data diunduh, agar halaman awal dan font tampil lebih dulu.
   ui: { mobileMax: 960, pinSize: 24, pinSizeTujuan: 28, pinFullZoom: 16, dataDelayMax: 1500 },
+  // Animasi (ms). Karakter "Corporate": tanpa memantul. Masuk melambat di akhir (easeOut), keluar dipercepat (easeIn).
+  // Transisi halaman awal ke dashboard = pageOut*0.8 + 2*stagger + enter = 144 + 120 + 260 = 524 ms (< 600 ms).
+  motion: { pageOut: 180, enter: 260, stagger: 60, shift: 12, accOpen: 240, accClose: 180,
+            easeOut: 'cubic-bezier(0.2, 0, 0, 1)', easeIn: 'cubic-bezier(0.3, 0, 1, 1)' },
   // Label tampilan untuk nilai kolom jenis. Isi data tidak diubah, hanya teks yang tampil di antarmuka.
   typeLabels: { 'Kos Putri': 'Kost Putri', 'Kos Putra': 'Kost Putra' },
   // Semua file di folder data/ diekspor dalam EPSG:4326 (lon/lat). Bila Anda mengekspor ulang dari QGIS dalam

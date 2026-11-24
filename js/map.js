@@ -121,5 +121,6 @@ const MapView = (() => {
     if (innerWidth <= UI.mobileMax && !el.dataset.init) { el.classList.add('closed'); t.setAttribute('aria-expanded', 'false'); }
     el.dataset.init = '1';
   }
-  return { init, showBasemap, openSheet, closeSheet, isSheetOpen, sheetMode, fit, setBoundary, setGrid, paintGrid, selectGrid, setPoints, toggle, focusGrid, openPoint, drawRoute, clearRoute, legend, icon, svg, esc, classColor, ICONS };
+  const invalidate = () => { if (map) map.invalidateSize(); };
+  return { init, showBasemap, invalidate, openSheet, closeSheet, isSheetOpen, sheetMode, fit, setBoundary, setGrid, paintGrid, selectGrid, setPoints, toggle, focusGrid, openPoint, drawRoute, clearRoute, legend, icon, svg, esc, classColor, ICONS };
 })();

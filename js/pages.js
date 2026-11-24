@@ -32,11 +32,62 @@ const Pages = (() => {
   ];
   const store = { get() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }, set() { try { localStorage.setItem(KEY, '1'); } catch (e) { /* abaikan */ } } };
 
+  /* ---------- Animasi (CSS transition dan Web Animations API saja) ---------- */
+  const M = CONFIG.motion;
+  const reduced = () => !Element.prototype.animate || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let current = null, running = [];
+  const finishAll = () => { running.forEach(a => { try { a.finish(); } catch (e) { /* sudah selesai */ } }); running = []; };
+  function mapReady() {   // ukuran peta dihitung ulang setelah transisi selesai
+    if (typeof MapView === 'undefined') return;
+    MapView.showBasemap();
+    if (!show.fitted) { show.fitted = true; MapView.fit(); } else MapView.invalidate();
+  }
+  /* Halaman awal ke dashboard: halaman awal memudar dan naik sedikit, lalu peta, panel kiri, dan panel kanan muncul berurutan.
+     Total M.pageOut*0.8 + 2*M.stagger + M.enter, di bawah 600 ms. Hanya transform dan opacity yang dianimasikan. */
+  function welcomeToDashboard(welcome) {
+    finishAll();
+    const small = innerWidth <= CONFIG.ui.mobileMax;
+    const out = welcome.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: `translateY(${-M.shift}px)` }],
+      { duration: M.pageOut, easing: M.easeIn, fill: 'forwards' });
+    const items = [['.mapwrap', `translateY(${M.shift}px)`], ['.panel.left', small ? `translateY(${M.shift}px)` : `translateX(${-M.shift}px)`],
+                   ['.panel.right', small ? `translateY(${M.shift}px)` : `translateX(${M.shift}px)`]];
+    const ins = items.map(([sel, from], i) => document.querySelector(sel).animate([{ opacity: 0, transform: from }, { opacity: 1, transform: 'none' }],
+      { duration: M.enter, delay: Math.round(M.pageOut * 0.8) + i * M.stagger, easing: M.easeOut, fill: 'backwards' }));
+    running = [out, ...ins];
+    out.finished.then(() => { welcome.classList.remove('active'); out.cancel(); }).catch(() => {});
+    Promise.all(ins.map(a => a.finished)).then(() => { running = []; mapReady(); }).catch(() => {});
+  }
   function show(v) {
-    document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + v));
+    const prev = current; current = v;
+    const welcome = $('page-welcome');
+    const animate = prev === 'welcome' && v === 'dashboard' && !reduced() && welcome.classList.contains('active');
+    document.querySelectorAll('.page').forEach(p => { if (!(animate && p === welcome)) p.classList.toggle('active', p.id === 'page-' + v); });
     document.querySelectorAll('[data-view]').forEach(a => a.classList.toggle('current', a.dataset.view === v));
-    if (v === 'dashboard' && typeof MapView !== 'undefined') { MapView.showBasemap(); if (!show.fitted) { show.fitted = true; setTimeout(() => MapView.fit(), 50); } }
     $('navLinks').classList.remove('open'); $('burger').setAttribute('aria-expanded', 'false'); window.scrollTo(0, 0);
+    if (animate) welcomeToDashboard(welcome);
+    else { finishAll(); if (v === 'dashboard') mapReady(); }
+  }
+
+  /* ---------- Akordeon FAQ ---------- */
+  // Tombol asli menangani Enter dan Spasi. aria-expanded dan hidden selalu mengikuti keadaan panel.
+  function setFaq(btn, open) {
+    const panel = $(btn.getAttribute('aria-controls')); if (!panel) return;
+    if ((btn.getAttribute('aria-expanded') === 'true') === open) return;
+    btn.setAttribute('aria-expanded', String(open));
+    if (panel._anim) { panel._anim.cancel(); panel._anim = null; }
+    if (reduced()) { panel.hidden = !open; return; }
+    if (open) panel.hidden = false;
+    const h = panel.scrollHeight;
+    const a = panel.animate(open ? [{ height: '0px', opacity: 0 }, { height: h + 'px', opacity: 1 }] : [{ height: h + 'px', opacity: 1 }, { height: '0px', opacity: 0 }],
+      { duration: open ? M.accOpen : M.accClose, easing: open ? M.easeOut : M.easeIn });
+    panel._anim = a;
+    a.finished.then(() => { panel._anim = null; if (!open) panel.hidden = true; }).catch(() => {});
+  }
+  function faqClick(e) {
+    const btn = e.target.closest('.faq-q'); if (!btn) return;
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    if (open) $('faqList').querySelectorAll('.faq-q[aria-expanded="true"]').forEach(b => { if (b !== btn) setFaq(b, false); });
+    setFaq(btn, open);
   }
   let step = 0;
   function renderStep() {
@@ -70,8 +121,10 @@ const Pages = (() => {
       <h2>Keterbatasan</h2><p>Kecepatan memakai batas dan kecepatan rencana menurut kelas jalan, bukan kecepatan lalu lintas aktual, sehingga waktu pada jam sibuk dapat lebih lama. Arah jalan satu arah belum dimodelkan. Skor bersifat relatif terhadap grid lain di Sinduadi. Data fasilitas di dalam kost belum tersedia sehingga belum dapat dipakai sebagai filter.</p>
       <h2>Informasi Penelitian</h2><table class="info"><tr><th>Judul</th><td>${esc(R.judul)}</td></tr><tr><th>Peneliti</th><td>${esc(R.peneliti)}</td></tr><tr><th>Program Studi</th><td>${esc(R.prodi)}</td></tr><tr><th>Fakultas</th><td>${esc(R.fakultas)}</td></tr><tr><th>Tahun</th><td>${esc(R.tahun)}</td></tr></table>
       <p><button class="primary" data-view="dashboard">Buka Dashboard</button></p>`;
-    $('faqList').innerHTML = FAQ.map((f, i) => `<details><summary>${i + 1}. ${esc(f[0])}</summary><p>${esc(f[1])}</p></details>`).join('');
-    $('faqList').addEventListener('toggle', e => { if (e.target.open) $('faqList').querySelectorAll('details').forEach(d => { if (d !== e.target) d.open = false; }); }, true);
+    const chev = '<svg class="chev" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+    $('faqList').innerHTML = FAQ.map((f, i) => `<div class="faq-item"><h2 class="faq-h"><button type="button" class="faq-q" id="faq-q-${i}" aria-expanded="false" aria-controls="faq-a-${i}"><span>${i + 1}. ${esc(f[0])}</span>${chev}</button></h2>
+      <div class="faq-a" id="faq-a-${i}" role="region" aria-labelledby="faq-q-${i}" hidden><p>${esc(f[1])}</p></div></div>`).join('');
+    $('faqList').addEventListener('click', faqClick);
   }
   build(); show('welcome');
   document.addEventListener('click', e => {

@@ -188,3 +188,16 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   .legend .lg-body{max-height:calc(31svh - 52px)}
 }
 @media (max-width:960px){.crit small,.crit small.wt,.crit .near,.sheet-body small{font-size:14px}}
+
+/* ---- Tahap 4c: animasi ---- */
+/* Akordeon FAQ: tombol penuh selebar kartu, panah berputar mengikuti aria-expanded. Tinggi panel dianimasikan di pages.js. */
+.faq-item{background:var(--card);border:1px solid var(--line);border-radius:8px;margin-bottom:8px}
+.faq-h{margin:0;font:inherit}
+.doc .faq-h{margin:0;font-size:inherit}
+.faq-q{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:12px 14px;border:0;border-radius:8px;background:none;color:var(--ink);font:600 15px/1.4 var(--font);text-align:left}
+.faq-q:hover{background:var(--soft)}
+.faq-q .chev{flex:none;color:var(--mut);transition:transform 200ms cubic-bezier(0.2,0,0,1)}
+.faq-q[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.faq-a{overflow:hidden}
+.faq-a p{margin:0;padding:0 14px 14px;color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.faq-q .chev{transition:none}}
