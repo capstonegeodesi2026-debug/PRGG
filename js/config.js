@@ -1,6 +1,31 @@
 /* KONFIGURASI: ubah di sini (bukan di kode lain) bila nama file/kolom berbeda. */
 const CONFIG = {
   center: [-7.7585, 110.3735], zoom: 15,
+  // Peta dasar OpenStreetMap standar. Patuhi kebijakan tile OSM: tanpa unduhan massal dan tanpa prefetch berlebihan.
+  basemap: {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+  },
+  // Tampilan: batas lebar ponsel (px) untuk lembar bawah dan tata letak bertumpuk, ukuran kotak ketuk ikon (px),
+  // dan zoom minimum ikon tampil penuh (di bawahnya lingkaran ikon diperkecil agar warna grid terbaca).
+  // dataDelayMax: batas tunggu (ms) sebelum data diunduh, agar halaman awal dan font tampil lebih dulu.
+  ui: { mobileMax: 960, pinSize: 24, pinSizeTujuan: 28, pinFullZoom: 16, dataDelayMax: 1500, gridChunk: 600 },
+  // Animasi (ms). Karakter "Corporate": tanpa memantul. Masuk melambat di akhir (easeOut), keluar dipercepat (easeIn).
+  // Transisi halaman awal ke dashboard = pageOut*0.8 + 2*stagger + enter = 144 + 120 + 260 = 524 ms (< 600 ms).
+  motion: { pageOut: 180, enter: 260, stagger: 60, shift: 12, accOpen: 240, accClose: 180,
+            easeOut: 'cubic-bezier(0.2, 0, 0, 1)', easeIn: 'cubic-bezier(0.3, 0, 1, 1)' },
+  // Foto kost untuk halaman Tentang (nilai kolom foto dan nama kost dari akomodasi.geojson).
+  // Dipilih yang tanpa watermark, logo, sisa tampilan aplikasi, atau pelat nomor yang terbaca.
+  aboutPhotos: [
+    { foto: 'KPA-PK-07.jpg', nama: 'Kost putra patra 2' },
+    { foto: 'KPI-KT-03.png', nama: 'Kost Griya Janitra Tipe B' },
+    { foto: 'KPI-PL-11.png', nama: 'KOST PUTRI ARJUNA BLOK G' },
+    { foto: 'KPA-PK-26.png', nama: 'Kost Pondok Sahabat Pak Saridjan' },
+    { foto: 'KPA-PL-03.png', nama: 'Kost Bu Manik Mlati Sleman' }
+  ],
+  // Label tampilan untuk nilai kolom jenis. Isi data tidak diubah, hanya teks yang tampil di antarmuka.
+  typeLabels: { 'Kos Putri': 'Kost Putri', 'Kos Putra': 'Kost Putra' },
   // Semua file di folder data/ diekspor dalam EPSG:4326 (lon/lat). Bila Anda mengekspor ulang dari QGIS dalam
   // UTM 49S, ubah menjadi 'EPSG:32749'; konversi dilakukan sekali saat data dimuat (js/crs.js).
   sourceCRS: 'EPSG:4326',
@@ -18,8 +43,10 @@ const CONFIG = {
             kosPrice: 'harga', kosPriceUnit: 'satuan_harga', kosPhoto: 'foto',
             facId: 'faculty_id', facName: 'nama_fakultas', routeKos: 'id_kos', routeFac: 'faculty_id',
             routeDist: 'panjang_rute_m', routeTime: 'waktu_menit', routeShort: 'jarak_terpendek_m' },
-  // Foto kost: letakkan berkas (nama sesuai kolom foto, misalnya KPI-KT-01.png) di folder ini. Foto yang tidak ada disembunyikan.
+  // Foto kost hasil tools/optimasi_foto.py. Kolom foto berisi nama asli (misalnya KPI-KT-01.png). Dashboard memakai
+  // nama yang sama tanpa ekstensi + photoExt, jadi KPI-KT-01.png dibaca dari data/foto/KPI-KT-01.webp. Foto yang gagal dimuat disembunyikan.
   photoDir: 'data/foto/',
+  photoExt: '.webp',
   // Rentang harga untuk filter. unit harus sama dengan isi kolom satuan_harga.
   priceBands: [
     { id: 'b1', unit: 'bulan', label: 'Kurang dari Rp750.000 per bulan', min: 0, max: 750000 },
@@ -48,8 +75,8 @@ const CONFIG = {
   ],
   // Layer titik. index: true = dipakai dalam skor. Fasilitas lain hanya ditampilkan.
   layers: {
-    fakultas:     { label: 'Tujuan kampus (gerbang/titik jemput)', color: '#14532d', icon: 'cap' },
-    akomodasi:    { label: 'Kos / Penginapan',  color: '#2563eb', icon: 'house' },
+    fakultas:     { label: 'Tujuan kampus (gerbang/titik jemput)', color: '#0F2A44', icon: 'cap' },
+    akomodasi:    { label: 'Kost dan penginapan',  color: '#2563eb', icon: 'house' },
     halte:        { label: 'Halte Trans Jogja', color: '#f97316', icon: 'bus',      file: 'data/fasum/halte.geojson',        id: 'id_fas', name: 'nama', index: true },
     minimarket:   { label: 'Minimarket',        color: '#0891b2', icon: 'cart',     file: 'data/fasum/minimarket.geojson',   id: 'id_fas', name: 'nama', index: true },
     kesehatan:    { label: 'Fasilitas kesehatan', color: '#dc2626', icon: 'cross',  file: 'data/fasum/kesehatan.geojson',    id: 'id_fas', name: 'nama', index: true },

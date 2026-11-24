@@ -12,19 +12,49 @@ const MapView = (() => {
   };
   const svg = (k, size, color) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>`;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  let map, gridLayer, boundary, routeGroup, layers = {}, gridById = {}, scoreBy = {}, lastStyle = {}, selId = null;
+  let map, gridLayer, boundary, routeGroup, basemap, layers = {}, gridById = {}, scoreBy = {}, lastStyle = {}, selId = null;
+  const UI = CONFIG.ui;
+  // Lembar bawah (bottom sheet) dipakai di layar sempit. Desktop tetap memakai pop-up Leaflet.
+  const sheetMode = () => matchMedia(`(max-width: ${UI.mobileMax}px)`).matches;
+  const canHover = () => matchMedia('(hover: hover)').matches;
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  /* Kotak ketuk ikon minimal 24 px (WCAG 2.5.8). Lingkaran di dalamnya mengecil pada zoom rendah agar warna grid tetap terbaca. */
   function icon(key, size) {
-    const c = CONFIG.layers[key]; size = size || 22;
+    const c = CONFIG.layers[key]; size = size || UI.pinSize;
     return L.divIcon({ className: 'pin', iconSize: [size, size], iconAnchor: [size / 2, size / 2], popupAnchor: [0, -size / 2],
-      html: `<div class="pin-in" style="background:${c.color};width:${size}px;height:${size}px">${svg(c.icon, size * 0.6, '#fff')}</div>` });
+      html: `<div class="pin-in" style="background:${c.color}">${svg(c.icon, Math.round(size * 0.58), '#fff')}</div>` });
   }
   function init() {
     map = L.map('map', { zoomControl: true, preferCanvas: true, zoomSnap: 0.25 }).setView(CONFIG.center, CONFIG.zoom);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19,
-      attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(map);
+    const b = CONFIG.basemap;
+    basemap = L.tileLayer(b.url, { maxZoom: b.maxZoom, attribution: b.attribution });
     routeGroup = L.layerGroup().addTo(map);
+    const zcls = () => map.getContainer().classList.toggle('z-low', map.getZoom() < UI.pinFullZoom);
+    map.on('zoomend', zcls); zcls();
+    initSheet();
   }
+  /* Tile OSM baru diminta saat dashboard pertama kali dibuka, tidak saat halaman awal (hemat tile sesuai kebijakan OSM). */
+  function showBasemap() { if (basemap && !map.hasLayer(basemap)) basemap.addTo(map); }
+
+  /* ---------- Lembar bawah ---------- */
+  let sheet, sheetBody;
+  function initSheet() {
+    sheet = document.getElementById('sheet'); sheetBody = document.getElementById('sheetBody'); if (!sheet) return;
+    sheet.querySelector('.sheet-close').onclick = () => closeSheet();
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden) closeSheet(); });
+  }
+  function openSheet(html, label, latlng) {
+    if (!sheet) return;
+    map.closePopup();
+    sheetBody.innerHTML = html; sheet.setAttribute('aria-label', label || 'Detail'); sheet.hidden = false; sheetBody.scrollTop = 0;
+    if (latlng) {   // titik digeser ke bagian peta yang tidak tertutup lembar
+      const size = map.getSize(), free = size.y - sheet.offsetHeight, p = map.latLngToContainerPoint(latlng);
+      if (p.y > free - 24 || p.y < 24 || p.x < 24 || p.x > size.x - 24) map.panBy([p.x - size.x / 2, p.y - free / 2], { animate: !reduced() });
+    }
+  }
+  function closeSheet() { if (!sheet || sheet.hidden) return; sheet.hidden = true; sheetBody.innerHTML = ''; }
+  const isSheetOpen = () => !!sheet && !sheet.hidden;
   const classColor = k => (CONFIG.classes.find(c => c.k === k) || {}).color || '#9ca3af';
   const tip = id => { const r = scoreBy[id], c = r && CONFIG.classes.find(x => x.k === r.kelas);
     return `<b>${esc(id)}</b>${r && r.rank ? `<br>Kelas ${r.kelas} · ${esc(c.label)}<br>Skor ${r.score.toLocaleString('id-ID', { maximumFractionDigits: 1 })} · peringkat ${r.rank}` : '<br>skor tidak lengkap'}`; };
@@ -32,10 +62,17 @@ const MapView = (() => {
   function setBoundary(fc) {
     boundary = L.geoJSON(fc, { interactive: false, style: { color: '#0f3d24', weight: 2.5, dashArray: '6 4', fill: false } }).addTo(map);
   }
-  function setGrid(fc, onClick) {
+  /* 4.285 poligon dibuat bertahap (UI.gridChunk fitur per tugas) agar tidak ada satu tugas panjang yang memblokir halaman. */
+  async function setGrid(fc, onClick) {
     gridById = {}; lastStyle = {};
-    gridLayer = L.geoJSON(fc, { style: { color: '#475569', weight: 1, fillOpacity: .5, fillColor: '#9ca3af' },
-      onEachFeature: (f, l) => { const id = f.properties[CONFIG.fields.grid]; gridById[id] = l; l.bindTooltip(() => tip(id), { sticky: true, direction: 'top', offset: [0, -8] }); l.on('click', () => onClick(id)); } }).addTo(map);
+    gridLayer = L.geoJSON(null, { style: { color: '#475569', weight: 1, fillOpacity: .5, fillColor: '#9ca3af' },
+      onEachFeature: (f, l) => { const id = f.properties[CONFIG.fields.grid]; gridById[id] = l;
+        // Tooltip hanya di perangkat yang bisa hover. Padanan ketuknya adalah lembar ringkasan grid (app.js).
+        if (canHover()) l.bindTooltip(() => tip(id), { sticky: true, direction: 'top', offset: [0, -8] });
+        l.on('click', () => onClick(id)); } });
+    const feats = fc.features || [], n = UI.gridChunk || feats.length;
+    for (let i = 0; i < feats.length; i += n) { gridLayer.addData({ type: 'FeatureCollection', features: feats.slice(i, i + n) }); await new Promise(r => setTimeout(r, 0)); }
+    gridLayer.addTo(map);
     layers.grid = gridLayer; gridLayer.bringToBack();
     fit();
   }
@@ -46,17 +83,28 @@ const MapView = (() => {
     if (lastStyle[id] !== k) { lastStyle[id] = k; l.setStyle(s); } }
   function paintGrid(results, selected) { scoreBy = {}; results.forEach(r => { scoreBy[r.grid_id] = r; }); selId = selected; for (const id in gridById) restyle(id); }
   function selectGrid(id) { const p = selId; selId = id; if (p) restyle(p); restyle(id); if (gridById[id]) gridById[id].bringToFront(); }
-  function setPoints(key, fc, popupFn, onClick) {
-    const cfg = CONFIG.layers[key];
+  /* titleFn memberi nama aksesibel ikon (atribut title). contentFn berisi HTML untuk pop-up (desktop) atau lembar bawah (ponsel). */
+  function setPoints(key, fc, contentFn, onClick, titleFn) {
     const prev = layers[key], was = prev && map.hasLayer(prev); if (prev) map.removeLayer(prev);
-    const lyr = L.geoJSON(fc, { pointToLayer: (f, ll) => L.marker(ll, { icon: icon(key, key === 'fakultas' ? 26 : 20) }),
-      onEachFeature: (f, l) => { l.bindPopup(() => popupFn(f.properties), { maxWidth: 300 }); if (onClick) l.on('click', () => onClick(f.properties)); } });
+    const lyr = L.geoJSON(fc, { pointToLayer: (f, ll) => L.marker(ll, { icon: icon(key, key === 'fakultas' ? UI.pinSizeTujuan : UI.pinSize), title: titleFn ? titleFn(f.properties) : '', riseOnHover: true }),
+      onEachFeature: (f, l) => { l._show = () => showFeature(l, contentFn, titleFn); l.on('click', () => { l._show(); if (onClick) onClick(f.properties); }); } });
     layers[key] = lyr; if (was) lyr.addTo(map); return lyr;
+  }
+  function showFeature(l, contentFn, titleFn) {
+    const p = l.feature.properties, html = contentFn(p);
+    if (sheetMode()) { openSheet(html, titleFn ? titleFn(p) : 'Detail', l.getLatLng()); return; }
+    closeSheet(); l.unbindPopup(); l.bindPopup(html, popupOpts()).openPopup();
+  }
+  /* Pop-up tidak boleh lebih tinggi dari ruang peta: isi yang panjang digulir di dalam pop-up. */
+  function popupOpts() {
+    const el = map.getContainer(), h = el.clientHeight || 500, w = el.clientWidth || 360;
+    return { maxWidth: Math.min(300, w - 60), maxHeight: Math.max(220, Math.min(380, Math.round(h * 0.62))),
+             autoPanPaddingTopLeft: [12, 16], autoPanPaddingBottomRight: [12, 16] };
   }
   function toggle(key, on) { const l = layers[key]; if (!l) return; on ? l.addTo(map) : map.removeLayer(l); if (key !== 'grid' && gridLayer && on) gridLayer.bringToBack(); if (boundary) boundary.bringToFront(); }
   function focusGrid(id) { if (gridById[id]) map.fitBounds(gridById[id].getBounds(), { maxZoom: 17, padding: [30, 30] }); }
   function openPoint(key, idField, id) { const l = layers[key]; if (!l) return;
-    l.eachLayer(mk => { if (mk.feature.properties[idField] === id) { map.setView(mk.getLatLng(), Math.max(map.getZoom(), 17)); mk.openPopup(); } }); }
+    l.eachLayer(mk => { if (mk.feature.properties[idField] === id) { map.setView(mk.getLatLng(), Math.max(map.getZoom(), 17), { animate: false }); mk._show(); } }); }
   function clearRoute() { routeGroup.clearLayers(); }
   function drawRoute(feat, startLL, endLL, startName, endName) {
     clearRoute();
@@ -64,7 +112,7 @@ const MapView = (() => {
     L.polyline(coords, { color: '#fff', weight: 9, opacity: .95 }).addTo(routeGroup);
     const line = L.polyline(coords, { color: '#e11d48', weight: 5, opacity: 1 }).addTo(routeGroup);
     L.circleMarker(startLL, { radius: 8, color: '#fff', weight: 3, fillColor: '#2563eb', fillOpacity: 1 }).bindTooltip('Awal: ' + esc(startName), { permanent: false }).addTo(routeGroup);
-    L.circleMarker(endLL, { radius: 8, color: '#fff', weight: 3, fillColor: '#14532d', fillOpacity: 1 }).bindTooltip('Tujuan: ' + esc(endName)).addTo(routeGroup);
+    L.circleMarker(endLL, { radius: 8, color: '#fff', weight: 3, fillColor: '#0F2A44', fillOpacity: 1 }).bindTooltip('Tujuan: ' + esc(endName)).addTo(routeGroup);
     map.fitBounds(line.getBounds(), { padding: [50, 50] });
   }
   function legend(el, items, range) {
@@ -74,8 +122,9 @@ const MapView = (() => {
       <div class="lg-h">Titik</div>${items.map(k => `<div class="lg-row"><span class="lg-ic" style="background:${CONFIG.layers[k].color}">${svg(CONFIG.layers[k].icon, 11, '#fff')}</span>${esc(CONFIG.layers[k].label)}</div>`).join('')}
       <div class="lg-row"><span class="lg-bd"></span>Batas Kalurahan Sinduadi</div><div class="lg-row"><span class="lg-rt"></span>Rute tercepat</div></div>`;
     const t = el.querySelector('.lg-toggle'); t.onclick = () => { const o = el.classList.toggle('closed'); t.setAttribute('aria-expanded', String(!o)); };
-    if (innerWidth < 960 && !el.dataset.init) { el.classList.add('closed'); t.setAttribute('aria-expanded', 'false'); }
+    if (innerWidth <= UI.mobileMax && !el.dataset.init) { el.classList.add('closed'); t.setAttribute('aria-expanded', 'false'); }
     el.dataset.init = '1';
   }
-  return { init, fit, setBoundary, setGrid, paintGrid, selectGrid, setPoints, toggle, focusGrid, openPoint, drawRoute, clearRoute, legend, icon, svg, esc, classColor, ICONS };
+  const invalidate = () => { if (map) map.invalidateSize(); };
+  return { init, showBasemap, invalidate, openSheet, closeSheet, isSheetOpen, sheetMode, fit, setBoundary, setGrid, paintGrid, selectGrid, setPoints, toggle, focusGrid, openPoint, drawRoute, clearRoute, legend, icon, svg, esc, classColor, ICONS };
 })();

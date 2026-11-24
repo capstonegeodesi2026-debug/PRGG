@@ -50,6 +50,16 @@
   }
 
   MapView.init();
+  const yieldUI = () => new Promise(r => setTimeout(r, 0));   // jeda singkat agar pemrosesan data tidak menjadi satu tugas panjang
+  // Data (sekitar 4 MB sebelum kompresi) baru diunduh setelah halaman awal dan font tampil, paling lama menunggu CONFIG.ui.dataDelayMax ms,
+  // agar unduhan data tidak berebut jaringan dengan tampilan pertama. Indikator "Memuat data" tetap tampil di dashboard.
+  await new Promise(r => document.readyState === 'complete' ? r() : addEventListener('load', r, { once: true }));
+  await Promise.race([document.fonts ? document.fonts.ready : Promise.resolve(), new Promise(r => setTimeout(r, CONFIG.ui.dataDelayMax))]);
+  await new Promise(r => {   // tunggu sampai halaman awal benar-benar tergambar (first contentful paint)
+    const t = setTimeout(r, CONFIG.ui.dataDelayMax);
+    try { const po = new PerformanceObserver(l => { if (l.getEntriesByName('first-contentful-paint').length) { po.disconnect(); clearTimeout(t); requestAnimationFrame(() => setTimeout(r, 0)); } });
+      po.observe({ type: 'paint', buffered: true }); } catch (e) { clearTimeout(t); requestAnimationFrame(() => setTimeout(r, 0)); }
+  });
   const fasumKeys = Object.keys(CONFIG.layers).filter(k => CONFIG.layers[k].file);
   const [grid, kos, fac, batas] = await Promise.all([
     loadJSON(CONFIG.files.grid, 'Grid', ['Polygon', 'MultiPolygon']),
@@ -68,7 +78,7 @@
   if (kos) {
     kos.features.forEach(f => { const id = f.properties[F.kosId]; if (S.kosById[id]) log('warn', `Akomodasi: id_kos duplikat ${id}.`); S.kosById[id] = f; });
     const orphan = kos.features.filter(f => grid && !S.gridSet.has(f.properties[F.kosGrid])).map(f => f.properties[F.kosId]);
-    if (orphan.length) log('warn', `Akomodasi: ${orphan.length} kos punya grid_id yang tidak ada di grid.geojson (${orphan.slice(0, 5).join(', ')}${orphan.length > 5 ? '…' : ''}).`);
+    if (orphan.length) log('warn', `Akomodasi: ${orphan.length} kost punya grid_id yang tidak ada di grid.geojson (${orphan.slice(0, 5).join(', ')}${orphan.length > 5 ? '…' : ''}).`);
   }
   for (const c of CONFIG.criteria) {
     if (c.gridField) {
@@ -78,7 +88,7 @@
     }
     const src = c.dest === 'fakultas' ? fac : fasum[c.dest], idf = c.dest === 'fakultas' ? F.facId : CONFIG.layers[c.dest]?.id;
     S.destIds[c.key] = src ? new Set(src.features.map(f => f.properties[idf])) : null;
-    const parsed = await loadCSV(c.csv, 'OD ' + c.label);
+    const parsed = await loadCSV(c.csv, 'OD ' + c.label); await yieldUI();
     S.tables[c.key] = parsed ? Scoring.buildTable(parsed, CONFIG.csv, 'OD ' + c.label, issues) : null;
     const t = S.tables[c.key]; if (!t) continue;
     const unk = [...t.pair.keys()].filter(o => !S.gridSet.has(o));
@@ -93,13 +103,17 @@
   }
 
   /* ---------- Peta ---------- */
+  await yieldUI();
   if (batas) MapView.setBoundary(batas);
-  if (grid) MapView.setGrid(grid, id => select(id, true));
+  if (grid) await MapView.setGrid(grid, id => select(id, true)); await yieldUI();
   const popBase = (title, rows) => `<div class="pop"><b>${esc(title)}</b><table>${rows.filter(r => r[1] !== undefined && r[1] !== null && r[1] !== '').map(r => `<tr><td>${esc(r[0])}</td><td>${r[2] ? r[1] : esc(r[1])}</td></tr>`).join('')}</table></div>`;
   const isInap = p => /penginapan|hotel|homestay|guest/i.test(p[F.kosType] || '');
   const facCol = fid => String(fid || '').replace('-', '');          // TP-001 -> TP001
-  const kosTrip = (p, fid) => { const w = p['waktu_' + facCol(fid)], d = p['jarak_' + facCol(fid)];
-    return Number.isFinite(w) ? `${num(w, 1)} menit · ${d >= 1000 ? num(d / 1000, 2) + ' km' : num(d) + ' m'}` : null; };
+  // Waktu = rute tercepat (QNEAT3). Jarak = jarak jaringan terpendek. Ditampilkan terpisah agar tidak tertukar dengan panjang rute tercepat.
+  const kosTime = (p, fid) => { const w = p['waktu_' + facCol(fid)]; return Number.isFinite(w) ? num(w, 1) + ' menit' : null; };
+  const kosDist = (p, fid) => { const d = p['jarak_' + facCol(fid)]; return Number.isFinite(d) ? (d >= 1000 ? num(d / 1000, 2) + ' km' : num(d) + ' m') : null; };
+  const typeLabel = t => (CONFIG.typeLabels && CONFIG.typeLabels[t]) || t;
+  const smooth = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
   const safeUrl = u => /^https:\/\//i.test(u || '') ? u : null;
   S.type = ''; S.kosSel = null; S.route = null;
   S.price = '';
@@ -108,23 +122,31 @@
     return String(p[F.kosPriceUnit] || '').toLowerCase() === b.unit && Number.isFinite(h) && h >= b.min && h <= b.max; };
   const visKos = () => kos ? kos.features.filter(f => (!S.type || f.properties[F.kosType] === S.type) && inBand(f.properties)) : [];
   const rupiah = v => 'Rp' + Number(v).toLocaleString('id-ID', { maximumFractionDigits: 0 });
-  const photo = p => p[F.kosPhoto] ? `<img class="kphoto" src="${esc(CONFIG.photoDir + p[F.kosPhoto])}" alt="Foto ${esc(p[F.kosName] || '')}" loading="lazy" onerror="this.remove()">` : '';
+  // Nama berkas foto: kolom foto tanpa ekstensi + CONFIG.photoExt (data tidak diubah).
+  const photoSrc = name => CONFIG.photoDir + (CONFIG.photoExt ? String(name).replace(/\.[^./]+$/, '') + CONFIG.photoExt : name);
+  const photo = p => p[F.kosPhoto] ? `<figure class="kphoto-wrap"><img class="kphoto" src="${esc(photoSrc(p[F.kosPhoto]))}" alt="${esc(p[F.kosName] || p[F.kosId] || 'Foto kost')}" width="320" height="200" loading="lazy" decoding="async"></figure>` : '';
+  // Foto gagal dimuat: bingkai foto disembunyikan dan diganti catatan singkat, tanpa error tambahan.
+  document.addEventListener('error', e => { const img = e.target; if (img && img.classList && img.classList.contains('kphoto')) {
+    const fig = img.closest('.kphoto-wrap'); if (fig) { fig.classList.add('nofoto'); fig.innerHTML = '<figcaption>Foto belum tersedia</figcaption>'; } } }, true);
   const kosRows = p => { const fid = $('facultySelect').value, link = safeUrl(p.link_gmaps), g = S.byGrid && S.byGrid.get(p[F.kosGrid]);
-    return [['ID', p[F.kosId]], ['Jenis', p[F.kosType]], ['Harga', Number.isFinite(+p[F.kosPrice]) && p[F.kosPrice] !== null ? `${rupiah(p[F.kosPrice])} per ${p[F.kosPriceUnit] || '-'}` : null], ['Padukuhan', p.padukuhan], ['Alamat', p.alamat],
+    return [['ID', p[F.kosId]], ['Jenis', typeLabel(p[F.kosType])], ['Harga', Number.isFinite(+p[F.kosPrice]) && p[F.kosPrice] !== null ? `${rupiah(p[F.kosPrice])} per ${p[F.kosPriceUnit] || '-'}` : null], ['Padukuhan', p.padukuhan], ['Alamat', p.alamat],
       ['Rating Google', p.rating !== null && p.rating !== undefined ? num(p.rating, 1) : null],
-      ['Ke ' + facShort(fid), kosTrip(p, fid)],
+      ['Waktu ke ' + facShort(fid), kosTime(p, fid)], ['Jarak terpendek', kosDist(p, fid)],
       ['Grid', g && g.score !== null ? `${p[F.kosGrid]} · skor ${num(g.score, 1)} (${clsLabel(g.kelas)})` : p[F.kosGrid]],
       ['Lokasi', link ? `<a href="${esc(link)}" target="_blank" rel="noopener">Buka di Google Maps</a>` : null, true]]; };
   function buildKos() { S.kosIdx = new Map(); visKos().forEach(f => { const g = f.properties[F.kosGrid]; if (!S.kosIdx.has(g)) S.kosIdx.set(g, []); S.kosIdx.get(g).push(f); });
     if (kos) MapView.setPoints('akomodasi', { ...kos, features: visKos() },
-    p => photo(p) + popBase(p[F.kosName] || p[F.kosId], kosRows(p)) + `<button class="mini" data-route="${esc(p[F.kosId])}">Lihat rute ke tujuan</button>`, p => selectKos(p[F.kosId])); }
-  if (fac) MapView.setPoints('fakultas', fac, p => popBase(p[F.facName] || p[F.facId], [['Kode', p[F.facId]], ['Singkatan', p.singkatan], ['Jenis', p.jenis]]));
+    p => photo(p) + popBase(p[F.kosName] || p[F.kosId], kosRows(p)) + `<button class="mini" data-route="${esc(p[F.kosId])}">Lihat rute ke tujuan</button>`, p => selectKos(p[F.kosId]),
+    p => `${p[F.kosName] || p[F.kosId]}, ${typeLabel(p[F.kosType]) || 'akomodasi'}`); }
+  if (fac) MapView.setPoints('fakultas', fac, p => popBase(p[F.facName] || p[F.facId], [['Kode', p[F.facId]], ['Singkatan', p.singkatan], ['Jenis', p.jenis]]), null,
+    p => `Tujuan kampus: ${p[F.facName] || p[F.facId]}`);
   fasumKeys.forEach(k => { const c = CONFIG.layers[k]; if (fasum[k]) MapView.setPoints(k, fasum[k], p => popBase(p[c.name] || p[c.id],
-    [['Kategori', c.label], ['ID', p[c.id]], ['Keterangan', p.keterangan], ['Peran', c.index ? 'Dipakai dalam skor aksesibilitas' : 'Informasi pendukung (tidak masuk skor)']])); });
+    [['Kategori', c.label], ['ID', p[c.id]], ['Keterangan', p.keterangan], ['Peran', c.index ? 'Dipakai dalam skor aksesibilitas' : 'Informasi pendukung (tidak masuk skor)']]), null,
+    p => `${c.label}: ${p[c.name] || p[c.id]}`); });
 
   const layerKeys = ['grid', ...Object.keys(CONFIG.layers)];
   S.present = { grid: !!grid, akomodasi: !!kos, fakultas: !!fac, ...Object.fromEntries(fasumKeys.map(k => [k, !!fasum[k]])) };
-  const small = innerWidth < 960;   // di ponsel hanya kos dan tujuan yang tampil di awal agar peta tidak penuh ikon
+  const small = innerWidth <= CONFIG.ui.mobileMax;   // di ponsel hanya kost dan tujuan yang tampil di awal agar peta tidak penuh ikon
   const onByDefault = k => S.present[k] && !(CONFIG.layers[k] && (CONFIG.layers[k].off || (small && CONFIG.layers[k].file)));
   $('layerList').innerHTML = layerKeys.map(k => { const lab = k === 'grid' ? 'Grid kelas aksesibilitas' : CONFIG.layers[k].label, ok = S.present[k],
       n = k === 'grid' ? '' : k === 'akomodasi' ? (kos ? kos.features.length : '') : k === 'fakultas' ? (fac ? fac.features.length : '') : (fasum[k] ? fasum[k].features.length : '');
@@ -137,13 +159,13 @@
   $('facultySelect').innerHTML = facList.length ? facList.map(f => `<option value="${esc(f.id)}">${esc(f.name)}</option>`).join('') : '<option value="">(tujuan tidak tersedia)</option>';
   const facShort = fid => { const f = facList.find(x => x.id === fid); return f ? (f.short || f.name) : 'tujuan'; };
   const types = kos ? [...new Set(kos.features.map(f => f.properties[F.kosType]).filter(Boolean))].sort() : [];
-  $('typeSelect').innerHTML = '<option value="">Semua akomodasi</option>' + types.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  $('typeSelect').innerHTML = '<option value="">Semua akomodasi</option>' + types.map(t => `<option value="${esc(t)}">${esc(typeLabel(t))}</option>`).join('');
   $('typeSelect').disabled = !kos;
   const units = new Set(kos ? kos.features.map(f => String(f.properties[F.kosPriceUnit] || '').toLowerCase()) : []);
   const grp = u => CONFIG.priceBands.filter(b => b.unit === u && units.has(u));
   $('priceSelect').innerHTML = '<option value="">Semua harga</option>' + ['bulan', 'malam'].map(u => grp(u).length ? `<optgroup label="${u === 'bulan' ? 'Kost (per bulan)' : 'Penginapan (per malam)'}">${grp(u).map(b => `<option value="${b.id}">${esc(b.label)}</option>`).join('')}</optgroup>` : '').join('');
   $('priceSelect').disabled = !kos || !units.size;
-  buildKos();
+  buildKos(); await yieldUI();
   layerKeys.forEach(k => { if (onByDefault(k)) MapView.toggle(k, true); });
 
   CONFIG.criteria.forEach(c => S.weights[c.key] = c.weight);
@@ -182,6 +204,7 @@
   const kosIn = g => S.kosIdx.get(g) || [];
   const RANK_STEP = 100; S.rankLimit = RANK_STEP;
   function recalc() {
+    MapView.closeSheet();   // isi lembar bawah bergantung pada tujuan dan bobot
     const fid = $('facultySelect').value;
     S.results = Scoring.compute(S.gridIds, S.tables, CONFIG.criteria, fid, S.weights, S.gridProps);
     S.byGrid = new Map(S.results.map(r => [r.grid_id, r])); S.rankLimit = RANK_STEP;
@@ -191,15 +214,15 @@
     $('inapCount').textContent = kos ? vk.filter(f => isInap(f.properties)).length : '-'; $('facInfo').textContent = facName();
     renderDist(); renderRanking(); refreshLegend(); renderDetail(); renderKos();
   }
-  function renderDist() {   // sebaran grid dan kos per kelas
+  function renderDist() {   // sebaran grid dan kost per kelas
     const n = {}, nk = {}; CONFIG.classes.forEach(c => { n[c.k] = 0; nk[c.k] = 0; });
     S.results.forEach(r => { if (r.kelas) n[r.kelas]++; });
     visKos().forEach(f => { const r = S.byGrid.get(f.properties[F.kosGrid]); if (r && r.kelas) nk[r.kelas]++; });
     const tot = S.results.filter(r => r.kelas).length || 1;
     $('classDist').innerHTML = `<div class="cbar">${CONFIG.classes.map(c => `<i style="width:${n[c.k] / tot * 100}%;background:${c.color}" title="${esc(c.label)}: ${n[c.k]} grid"></i>`).join('')}</div>
-      <table class="ctab"><tr><th>Kelas</th><th>Grid</th><th>Kos</th></tr>${CONFIG.classes.slice().reverse().map(c => `<tr><td><span class="sw" style="background:${c.color}"></span>${c.k} · ${esc(c.label)}</td><td>${num(n[c.k])}</td><td>${nk[c.k]}</td></tr>`).join('')}</table>`;
+      <table class="ctab"><tr><th>Kelas</th><th>Grid</th><th>Kost</th></tr>${CONFIG.classes.slice().reverse().map(c => `<tr><td><span class="sw" style="background:${c.color}"></span>${c.k} · ${esc(c.label)}</td><td>${num(n[c.k])}</td><td>${nk[c.k]}</td></tr>`).join('')}</table>`;
   }
-  const rkItem = r => { const c = clsOf(r.kelas); return `<button class="rk${r.grid_id === S.selected ? ' sel' : ''}" data-grid="${esc(r.grid_id)}"><span class="rn">${r.rank ?? '–'}</span><span class="rt"><b>${esc(r.grid_id)}</b><small>${kosIn(r.grid_id).length} kos · ${esc(clsLabel(r.kelas))}</small></span><span class="rs"><i style="width:${r.score ?? 0}%;background:${c ? c.color : '#9ca3af'}"></i><b>${r.score === null ? 'n/a' : num(r.score, 1)}</b></span></button>`; };
+  const rkItem = r => { const c = clsOf(r.kelas); return `<button class="rk${r.grid_id === S.selected ? ' sel' : ''}" data-grid="${esc(r.grid_id)}"><span class="rn">${r.rank ?? '–'}</span><span class="rt"><b>${esc(r.grid_id)}</b><small>${kosIn(r.grid_id).length} kost · ${esc(clsLabel(r.kelas))}</small></span><span class="rs"><i style="width:${r.score ?? 0}%;background:${c ? c.color : '#9ca3af'}"></i><b>${r.score === null ? 'n/a' : num(r.score, 1)}</b></span></button>`; };
   function renderRanking() {
     const rs = S.onlyKos ? S.results.filter(r => kosIn(r.grid_id).length) : S.results, shown = rs.slice(0, S.rankLimit), sel = S.byGrid && S.byGrid.get(S.selected);
     const pinned = sel && !shown.includes(sel) ? rkItem(sel) + '<div class="rkgap">· · ·</div>' : '';
@@ -210,8 +233,16 @@
   function refreshLegend() {
     MapView.legend($('legend'), Object.keys(CONFIG.layers).filter(k => S.present[k] && document.querySelector(`[data-layer="${k}"]`)?.checked), S.results.range);
   }
-  function select(g, zoom) { S.selected = g; if (zoom) MapView.focusGrid(g); MapView.selectGrid(g); renderRanking(); renderDetail(); if (innerWidth < 960) $('gridDetail').scrollIntoView({ behavior: 'smooth' }); }
-  $('rankingList').addEventListener('click', e => { if (e.target.closest('[data-more]')) { S.rankLimit += RANK_STEP; renderRanking(); return; } const b = e.target.closest('[data-grid]'); if (b) select(b.dataset.grid, true); });
+  /* fromList: dipilih dari daftar peringkat (di ponsel peta digulir ke layar). Di ponsel ringkasan grid tampil di lembar bawah
+     sebagai padanan ketuk tooltip, dan halaman tidak lagi melompat ke panel Detail grid. */
+  function select(g, zoom, fromList) { S.selected = g; if (zoom) MapView.focusGrid(g); MapView.selectGrid(g); renderRanking(); renderDetail();
+    if (MapView.sheetMode()) { if (fromList) document.querySelector('.mapwrap').scrollIntoView({ behavior: smooth() }); MapView.openSheet(gridSheet(g), 'Ringkasan grid ' + g); } }
+  function gridSheet(g) { const r = S.byGrid && S.byGrid.get(g), c = r && clsOf(r.kelas), n = kosIn(g).length;
+    return `<div class="pop"><b>${esc(g)}</b> ${r && r.score !== null ? `<span class="pill" style="background:${c.color};color:${r.kelas >= 4 || r.kelas === 1 ? '#fff' : '#13202D'}">kelas ${r.kelas} · ${esc(c.label)}</span>` : '<span class="pill">skor belum lengkap</span>'}
+      <table><tr><td>Skor</td><td>${r && r.score !== null ? num(r.score, 1) + ' dari 100' : '-'}</td></tr><tr><td>Peringkat</td><td>${r && r.rank ? r.rank + ' dari ' + num(S.results.filter(x => x.score !== null).length) : '-'}</td></tr>
+      <tr><td>Tujuan</td><td>${esc(facName())}</td></tr><tr><td>Akomodasi</td><td>${n} titik</td></tr></table></div>
+      <button class="mini" data-goto="gridDetail">Lihat rincian kriteria</button>`; }
+  $('rankingList').addEventListener('click', e => { if (e.target.closest('[data-more]')) { S.rankLimit += RANK_STEP; renderRanking(); return; } const b = e.target.closest('[data-grid]'); if (b) select(b.dataset.grid, true, true); });
   function renderDetail() {
     const el = $('gridDetail'), r = S.byGrid && S.byGrid.get(S.selected);
     if (!r) { el.innerHTML = '<p class="hint">Pilih grid pada peta atau daftar peringkat.</p>'; return; }
@@ -223,14 +254,16 @@
       ${r.missing.length ? `<p class="warnbox">Data tidak tersedia untuk: ${r.missing.map(k => esc(CONFIG.criteria.find(c => c.key === k).label)).join(', ')}. Skor tidak dihitung (tidak diganti 0).</p>` : ''}
       <p class="hint">Persentil 100 berarti grid ini paling unggul pada kriteria tersebut dibanding seluruh grid. Poin = persentil × bobot, dan jumlah poin adalah skor. Kerapatan simpang radius 800 m (uji sensitivitas): ${gp.simpang_800 !== undefined ? num(gp.simpang_800, 1) + ' simpang/km²' : '-'}.</p>
       <h4>Akomodasi di grid ini (${ks.length}${S.type || S.price ? ', sesuai filter' : ''})</h4>
-      ${ks.length ? `<ul class="koslist">${ks.map(f => `<li><div><b>${esc(f.properties[F.kosName] || f.properties[F.kosId])}</b><small>${esc(f.properties[F.kosId])}${f.properties[F.kosType] ? ' · ' + esc(f.properties[F.kosType]) : ''}</small></div><button class="mini" data-kos="${esc(f.properties[F.kosId])}">Lihat di peta</button></li>`).join('')}</ul>` : '<p class="hint">Tidak ada akomodasi di grid ini.</p>'}`;
+      ${ks.length ? `<ul class="koslist">${ks.map(f => `<li><div><b>${esc(f.properties[F.kosName] || f.properties[F.kosId])}</b><small>${esc(f.properties[F.kosId])}${f.properties[F.kosType] ? ' · ' + esc(typeLabel(f.properties[F.kosType])) : ''}</small></div><button class="mini" data-kos="${esc(f.properties[F.kosId])}">Lihat di peta</button></li>`).join('')}</ul>` : '<p class="hint">Tidak ada akomodasi di grid ini.</p>'}`;
   }
 
   /* ---------- Detail akomodasi & rute ---------- */
-  function selectKos(id, fly) { S.kosSel = id; resetRoute(); renderKos(); if (fly) MapView.openPoint('akomodasi', F.kosId, id); }
+  function selectKos(id, fly) { S.kosSel = id; resetRoute(); renderKos(); if (fly) MapView.openPoint('akomodasi', F.kosId, id);
+    // Di desktop panel kanan digulir agar Detail akomodasi langsung terlihat. Di ponsel peta tetap di layar.
+    if (innerWidth >= 960) $('kosDetail').parentElement.scrollIntoView({ block: 'nearest', behavior: smooth() }); }
   function renderKos() {
     const el = $('kosDetail'), f = S.kosById[S.kosSel];
-    if (!f || !visKos().includes(f)) { el.innerHTML = '<p class="hint">Klik titik kos pada peta untuk melihat detail dan rute ke tujuan yang dipilih.</p>'; return; }
+    if (!f || !visKos().includes(f)) { el.innerHTML = '<p class="hint">Klik titik kost pada peta untuk melihat detail dan rute ke tujuan yang dipilih.</p>'; return; }
     const p = f.properties;
     el.innerHTML = photo(p) + `<h3>${esc(p[F.kosName] || p[F.kosId])}</h3><table class="crit kv">${kosRows(p).filter(r => r[1] !== null && r[1] !== undefined && r[1] !== '').map(r => `<tr><td>${esc(r[0])}</td><td>${r[2] ? r[1] : esc(r[1])}</td></tr>`).join('')}</table>
       <button class="route-btn" data-route="${esc(p[F.kosId])}">Lihat rute ke ${esc(facShort($('facultySelect').value))}</button>`;
@@ -250,7 +283,7 @@
     const fid = $('facultySelect').value, kf = S.kosById[kosId], ff = fac && fac.features.find(f => f.properties[F.facId] === fid);
     if (!kf) return;
     if (S.kosSel !== kosId) { S.kosSel = kosId; renderKos(); }
-    MapView.clearRoute();
+    MapView.clearRoute(); MapView.closeSheet();
     if (!ff) { S.route = { kind: 'warn', html: '<div>Pilih tujuan kampus yang tersedia dalam data.</div>' }; renderRouteBar(); return; }
     const kn = kf.properties[F.kosName] || kosId, fn = ff.properties[F.facName] || fid;
     S.route = { kind: 'ok', html: '<div>Memuat rute…</div>' }; renderRouteBar();
@@ -260,7 +293,7 @@
     if (!rf) { S.route = { kind: 'warn', html: `<div><b>Data rute untuk akomodasi dan tujuan ini belum tersedia.</b></div><small>${esc(kn)} → ${esc(fn)}</small>` }; renderRouteBar(); return; }
     const kl = kf.geometry.coordinates, fl = ff.geometry.coordinates;
     MapView.drawRoute(rf, [kl[1], kl[0]], [fl[1], fl[0]], kn, fn);
-    if (innerWidth < 960) document.querySelector('.mapwrap').scrollIntoView({ behavior: 'smooth' });
+    if (innerWidth < 960) document.querySelector('.mapwrap').scrollIntoView({ behavior: smooth() });
     const p = rf.properties, ok = v => v !== null && v !== undefined && v !== '' && Number.isFinite(+v), km = v => +v >= 1000 ? num(v / 1000, 2) + ' km' : num(v) + ' m';
     S.route = { kind: 'ok', html: `<div><b>${esc(kn)} → ${esc(fn)}</b></div><div>Waktu tempuh: <b>${ok(p[F.routeTime]) ? num(p[F.routeTime], 1) + ' menit' : 'tidak tersedia'}</b> · Panjang rute: <b>${ok(p[F.routeDist]) ? km(p[F.routeDist]) : '-'}</b></div>${ok(p[F.routeShort]) && Math.abs(p[F.routeShort] - p[F.routeDist]) > 20 ? `<small>Jalur tercepat. Jalur terpendek ${km(p[F.routeShort])}, tetapi lebih lambat.</small>` : '<small>Jalur tercepat berdasarkan kecepatan kelas jalan.</small>'}` };
     renderRouteBar();
@@ -268,8 +301,10 @@
   document.addEventListener('click', e => {
     const r = e.target.closest('[data-route]'); if (r) { showRoute(r.dataset.route); return; }
     if (e.target.closest('[data-closeroute]')) return resetRoute();
-    const k = e.target.closest('[data-kos]'); if (k) selectKos(k.dataset.kos, true);
+    const k = e.target.closest('[data-kos]'); if (k) { if (MapView.sheetMode()) document.querySelector('.mapwrap').scrollIntoView({ behavior: smooth() }); selectKos(k.dataset.kos, true); return; }
+    const gt = e.target.closest('[data-goto]'); if (gt) { MapView.closeSheet(); const el = $(gt.dataset.goto); if (el) { el.parentElement.scrollIntoView({ behavior: smooth() }); } }
   });
 
   recalc(); renderStatus();
+  const busy = $('busy'); busy.hidden = true; busy.textContent = 'Memproses…';   // indikator muat awal diganti menjadi indikator proses
 })();

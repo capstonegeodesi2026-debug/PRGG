@@ -2,13 +2,18 @@
 <html lang="id">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SINDUADI SPATIAL · Dashboard Aksesibilitas Kos</title>
-<link rel="stylesheet" href="lib/leaflet/leaflet.css">
+<title>SINDUADI SPATIAL · Dashboard Aksesibilitas Kost</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<!-- Gaya Leaflet hanya dibutuhkan dashboard, dimuat tanpa memblokir halaman awal -->
+<link rel="stylesheet" href="lib/leaflet/leaflet.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="lib/leaflet/leaflet.css"></noscript>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Font dimuat tanpa memblokir render. Sebelum Inter siap, teks memakai font sistem. -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
 <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="on-page">
 <nav class="nav">
   <a class="brand" href="#" data-view="welcome"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>SINDUADI SPATIAL</a>
   <button class="burger" id="burger" aria-label="Buka menu" aria-expanded="false">☰</button>
@@ -37,44 +42,42 @@
     <section><h2>Layer peta</h2><div id="layerList"></div></section>
     <details class="status" id="statusPanel"><summary>Status data <span id="statusBadge" class="badge">…</span></summary><ul id="statusList"></ul></details>
   </aside>
-  <section class="mapwrap"><div id="map"></div><div id="busy" class="busy" hidden>Memproses…</div><div id="routeBar" class="routebar" hidden></div><div id="legend" class="legend"></div></section>
+  <section class="mapwrap"><div id="map"></div><div id="busy" class="busy" role="status" aria-live="polite">Memuat data…</div><div id="routeBar" class="routebar" hidden></div><div id="legend" class="legend"></div>
+    <section id="sheet" class="sheet" role="region" aria-label="Detail" hidden><div class="sheet-bar"><span class="sheet-grip" aria-hidden="true"></span><button type="button" class="sheet-close" aria-label="Tutup detail">&times;</button></div><div class="sheet-body" id="sheetBody"></div></section></section>
   <aside class="panel right">
     <section><h2>Ringkasan</h2>
-      <div class="stats"><div><b id="gridCount">–</b><span>Grid</span></div><div><b id="accCount">–</b><span>Titik akomodasi</span></div><div><b id="kosCount">–</b><span>Kos</span></div><div><b id="inapCount">–</b><span>Penginapan</span></div></div>
+      <div class="stats"><div><b id="gridCount">–</b><span>Grid</span></div><div><b id="accCount">–</b><span>Titik akomodasi</span></div><div><b id="kosCount">–</b><span>Kost</span></div><div><b id="inapCount">–</b><span>Penginapan</span></div></div>
       <p class="facinfo">Tujuan: <b id="facInfo">–</b></p></section>
     <section><h2>Sebaran kelas</h2><div id="classDist"></div>
     </section>
-    <section><h2>Peringkat grid</h2><label class="chk inline"><input type="checkbox" id="onlyKos"> Hanya grid yang berisi kos</label><div id="rankingList" class="ranking"></div></section>
+    <section><h2>Peringkat grid</h2><label class="chk inline"><input type="checkbox" id="onlyKos"> Hanya grid yang berisi kost</label><div id="rankingList" class="ranking"></div></section>
     <section><h2>Detail grid</h2><div id="gridDetail"></div></section>
     <section><h2>Detail akomodasi</h2><div id="kosDetail"></div></section>
   </aside>
 </main>
 
-<section class="page active" id="page-welcome">
-  <div class="hero">
+<section class="page active" id="page-welcome" aria-labelledby="heroTitle">
+  <div class="hero" data-enter>
     <div class="hero-text">
-      <p class="eyebrow">WebGIS · Teknik Geodesi UGM</p>
-      <h1>SINDUADI SPATIAL</h1>
-      <h2>Dashboard Spasial Persebaran dan Aksesibilitas Kos dan Penginapan</h2>
+      <p class="eyebrow">SINDUADI SPATIAL · WebGIS Teknik Geodesi UGM</p>
+      <h1 id="heroTitle">Aksesibilitas kost dan penginapan di Kalurahan Sinduadi</h1>
+      <p class="lead">Dashboard spasial untuk membandingkan kawasan tempat tinggal di sekitar kampus UGM menurut waktu tempuh ke tujuan kampus serta jarak ke halte, minimarket, dan fasilitas kesehatan melalui jaringan jalan.</p>
+      <dl class="facts">
+        <div><dt>grid heksagon</dt><dd>4.285</dd></div>
+        <div><dt>kost dan penginapan</dt><dd>137</dd></div>
+        <div><dt>tujuan kampus</dt><dd>20</dd></div>
+      </dl>
+      <div class="cta"><button type="button" class="primary big" data-action="start">Buka dashboard</button><a href="#" class="btn-sec" data-view="about">Baca metodologi</a></div>
       <p class="loc">Kalurahan Sinduadi, Kapanewon Mlati, Kabupaten Sleman</p>
-      <p>Bandingkan 4.285 petak kawasan dan 137 kos/penginapan berdasarkan waktu tempuh ke 20 gerbang kampus UGM serta jarak ke halte, minimarket, dan fasilitas kesehatan melalui jaringan jalan.</p>
-      <div class="cta"><button class="primary big" data-action="start">Mulai Eksplorasi</button><a href="#" class="ghost" data-view="about">Tentang Penelitian</a></div>
     </div>
-    <svg class="hero-art" viewBox="0 0 520 420" role="img" aria-label="Ilustrasi grid kawasan, jaringan jalan, dan lokasi kos">
-      <defs><clipPath id="hc"><rect width="520" height="420" rx="22"/></clipPath></defs>
-      <g clip-path="url(#hc)"><rect width="520" height="420" fill="#0f3d24"/>
-        <g opacity=".9"><rect x="40" y="40" width="110" height="100" fill="#2fbf5b"/><rect x="150" y="40" width="110" height="100" fill="#8fd14f"/><rect x="260" y="40" width="110" height="100" fill="#e6c23a"/><rect x="370" y="40" width="110" height="100" fill="#f0a23a"/>
-        <rect x="40" y="140" width="110" height="100" fill="#8fd14f"/><rect x="150" y="140" width="110" height="100" fill="#2fbf5b"/><rect x="260" y="140" width="110" height="100" fill="#8fd14f"/><rect x="370" y="140" width="110" height="100" fill="#e6c23a"/>
-        <rect x="40" y="240" width="110" height="100" fill="#e6c23a"/><rect x="150" y="240" width="110" height="100" fill="#8fd14f"/><rect x="260" y="240" width="110" height="100" fill="#e0793a"/><rect x="370" y="240" width="110" height="100" fill="#e0393e"/></g>
-        <g fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="3" stroke-linecap="round"><path d="M20 200 C140 170 220 250 330 210 S470 120 510 150"/><path d="M110 20 C130 120 90 230 150 330 S170 400 190 410"/><path d="M330 20 C320 110 360 200 330 210 S350 330 400 410"/></g>
-        <path d="M95 175 L150 200 L215 215 L330 210 L345 300" fill="none" stroke="#e11d48" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-        <g fill="#2563eb" stroke="#fff" stroke-width="3"><circle cx="95" cy="175" r="9"/><circle cx="215" cy="100" r="8"/><circle cx="300" cy="260" r="8"/><circle cx="420" cy="190" r="8"/><circle cx="170" cy="290" r="8"/></g>
-        <circle cx="345" cy="300" r="11" fill="#14532d" stroke="#fff" stroke-width="3"/></g>
-    </svg>
+    <figure class="hero-map">
+      <div class="hero-map-bar"><span>Kelas aksesibilitas ke Fakultas Teknik</span><ul class="hero-legend" id="heroLegend" aria-label="Kelas aksesibilitas"></ul></div>
+      <img src="img/peta-kelas.webp" srcset="img/peta-kelas-480.webp 480w, img/peta-kelas.webp 880w" sizes="(max-width: 960px) calc(100vw - 32px), 560px" width="880" height="745" loading="lazy" alt="Peta kelas aksesibilitas 4.285 grid di Kalurahan Sinduadi untuk tujuan Fakultas Teknik. Kelas tinggi berada di timur dekat kampus, kelas rendah di barat." decoding="async">
+    </figure>
   </div>
 </section>
 
-<section class="page" id="page-about"><div class="doc" id="aboutBody"></div></section>
+<section class="page" id="page-about"><div class="about" id="aboutBody"></div></section>
 <section class="page" id="page-faq"><div class="doc"><h1>FAQ</h1><p class="hint">Pertanyaan yang sering diajukan tentang Sinduadi Spatial.</p><div id="faqList" class="faq"></div></div></section>
 
 <div class="modal" id="onboard" hidden>
@@ -86,7 +89,7 @@
 </div>
 
 <footer>Skor aksesibilitas = persentil tiap kriteria × bobot AHP (OD Matrix QNEAT3, jaringan jalan Sleman dan Kota Yogyakarta). Data: Kelompok 7 Proyek Rekayasa Geodesi-Geoinformatika UGM.</footer>
-<script src="lib/leaflet/leaflet.js"></script>
-<script src="js/config.js"></script><script src="js/crs.js"></script><script src="js/scoring.js"></script><script src="js/map.js"></script><script src="js/app.js"></script><script src="js/pages.js"></script>
+<script src="lib/leaflet/leaflet.js" defer></script>
+<script src="js/config.js" defer></script><script src="js/crs.js" defer></script><script src="js/scoring.js" defer></script><script src="js/map.js" defer></script><script src="js/app.js" defer></script><script src="js/pages.js" defer></script>
 </body>
 </html>
