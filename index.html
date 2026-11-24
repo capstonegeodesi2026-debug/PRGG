@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SINDUADI SPATIAL · Dashboard Aksesibilitas Kos</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="lib/leaflet/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
@@ -11,7 +11,6 @@
 <body>
 <nav class="nav">
   <a class="brand" href="#" data-view="welcome"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>SINDUADI SPATIAL</a>
-  <span class="sim-badge">DATA SIMULASI</span>
   <button class="burger" id="burger" aria-label="Buka menu" aria-expanded="false">☰</button>
   <ul id="navLinks">
     <li><a href="#" data-view="dashboard">Dashboard</a></li>
@@ -24,15 +23,16 @@
 <main class="layout" id="dashboard">
   <aside class="panel left">
     <section><h2>Parameter analisis</h2>
-      <label for="facultySelect">Fakultas tujuan</label><select id="facultySelect"></select>
+      <label for="facultySelect">Tujuan kampus</label><select id="facultySelect"></select>
       <label for="typeSelect">Jenis akomodasi</label><select id="typeSelect"></select>
-      <p class="hint">Filter jenis hanya mengubah titik dan daftar akomodasi; skor WSM tidak berubah.</p>
+      <label for="priceSelect">Rentang harga</label><select id="priceSelect"></select>
+      <p class="hint">Tujuan kampus menentukan waktu tempuh, jadi skor ikut berubah. Filter jenis dan harga hanya menyaring titik akomodasi, skor kawasan tidak berubah.</p>
     </section>
     <section><h2>Bobot kriteria</h2>
-      <p class="hint">Dinormalisasi otomatis ke 100%. Bobot awal hanya contoh simulasi, bukan bobot final penelitian.</p>
+      <p class="hint"><span id="weightMode" class="wmode">Bobot AHP penelitian</span> Geser untuk mencoba bobot Anda sendiri. Total selalu dinormalisasi ke 100%.</p>
       <div id="weights"></div>
       <button id="applyWeights" class="primary wide">Bobot sudah diterapkan</button>
-      <p class="total">Total: <b id="weightTotal">100%</b> <button id="resetWeights" class="link">Reset</button></p>
+      <p class="total">Total: <b id="weightTotal">100%</b> <button id="resetWeights" class="link">Kembalikan bobot AHP</button></p>
     </section>
     <section><h2>Layer peta</h2><div id="layerList"></div></section>
     <details class="status" id="statusPanel"><summary>Status data <span id="statusBadge" class="badge">…</span></summary><ul id="statusList"></ul></details>
@@ -41,9 +41,10 @@
   <aside class="panel right">
     <section><h2>Ringkasan</h2>
       <div class="stats"><div><b id="gridCount">–</b><span>Grid</span></div><div><b id="accCount">–</b><span>Titik akomodasi</span></div><div><b id="kosCount">–</b><span>Kos</span></div><div><b id="inapCount">–</b><span>Penginapan</span></div></div>
-      <p class="facinfo">Fakultas tujuan: <b id="facInfo">–</b></p>
+      <p class="facinfo">Tujuan: <b id="facInfo">–</b></p></section>
+    <section><h2>Sebaran kelas</h2><div id="classDist"></div>
     </section>
-    <section><h2>Ranking grid (WSM)</h2><div id="rankingList" class="ranking"></div></section>
+    <section><h2>Peringkat grid</h2><label class="chk inline"><input type="checkbox" id="onlyKos"> Hanya grid yang berisi kos</label><div id="rankingList" class="ranking"></div></section>
     <section><h2>Detail grid</h2><div id="gridDetail"></div></section>
     <section><h2>Detail akomodasi</h2><div id="kosDetail"></div></section>
   </aside>
@@ -56,7 +57,7 @@
       <h1>SINDUADI SPATIAL</h1>
       <h2>Dashboard Spasial Persebaran dan Aksesibilitas Kos dan Penginapan</h2>
       <p class="loc">Kalurahan Sinduadi, Kapanewon Mlati, Kabupaten Sleman</p>
-      <p>Jelajahi kawasan hunian berdasarkan kemudahan menjangkau fakultas tujuan dan fasilitas umum, dihitung dari jaringan jalan.</p>
+      <p>Bandingkan 4.285 petak kawasan dan 137 kos/penginapan berdasarkan waktu tempuh ke 20 gerbang kampus UGM serta jarak ke halte, minimarket, dan fasilitas kesehatan melalui jaringan jalan.</p>
       <div class="cta"><button class="primary big" data-action="start">Mulai Eksplorasi</button><a href="#" class="ghost" data-view="about">Tentang Penelitian</a></div>
     </div>
     <svg class="hero-art" viewBox="0 0 520 420" role="img" aria-label="Ilustrasi grid kawasan, jaringan jalan, dan lokasi kos">
@@ -84,8 +85,8 @@
   </div>
 </div>
 
-<footer>Skor = Weighted Sum Model dari 6 kriteria jarak jaringan (OD Matrix QNEAT3). Rute ditampilkan dari GeoJSON, tidak dihitung ulang di browser.</footer>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<footer>Skor aksesibilitas = persentil tiap kriteria × bobot AHP (OD Matrix QNEAT3, jaringan jalan Sleman dan Kota Yogyakarta). Data: Kelompok 7 Proyek Rekayasa Geodesi-Geoinformatika UGM.</footer>
+<script src="lib/leaflet/leaflet.js"></script>
 <script src="js/config.js"></script><script src="js/crs.js"></script><script src="js/scoring.js"></script><script src="js/map.js"></script><script src="js/app.js"></script><script src="js/pages.js"></script>
 </body>
 </html>
