@@ -67,6 +67,9 @@ print('faculty csv', len(od), os.path.getsize(f'{OUT}/od_matrix/centroid_to_facu
 
 # Fasilitas terdekat: ID dari OD QNEAT3, nilai dari kawasan_final (sudah termasuk perbaikan 3 NULL faskes)
 for f, col, name in [('od_halte', 'd_halte', 'stop'), ('od_minimarket', 'd_minimarket', 'mart'), ('od_faskes', 'd_faskes', 'health')]:
+    if f'{col}_id' in kaw.columns:   # data v2: ID fasilitas terdekat sudah dihitung bersama nilainya
+        out = pd.DataFrame({'origin_id': kaw.grid_id, 'destination_id': kaw[f'{col}_id'], 'total_cost': kaw[col]})
+        out.to_csv(f'{OUT}/od_matrix/centroid_to_{name}.csv', index=False, float_format='%.1f'); print(name, len(out), '(v2)'); continue
     o = gpd.read_file(f'{H}/odz/{f}.gpkg', ignore_geometry=True).dropna(subset=['total_cost'])
     n = o.loc[o.groupby('origin_id').total_cost.idxmin(), ['origin_id', 'destination_id', 'total_cost']].set_index('origin_id')
     m = kaw.set_index('grid_id')[[col]].join(n)

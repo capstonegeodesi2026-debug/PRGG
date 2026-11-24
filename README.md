@@ -51,8 +51,9 @@ Salin semua foto ke folder `data/foto/` dengan nama persis seperti kolom foto (m
 
 ## Hasil pengecekan
 
-* Skor dashboard dibandingkan dengan `hasil_tahap9.gpkg` untuk 4.285 grid × 20 tujuan: selisih maksimum 0,005 (pembulatan 2 desimal), kelas sama di 85.700 dari 85.700 pasangan. Contoh G0001 ke TP-001: skor 13,72, kelas 1. Jalankan ulang dengan `node tools/test_scoring.js . tools/acuan_tahap9.csv`.
-* Waktu rute yang digambar dibandingkan dengan `od_kos_waktu` QNEAT3: selisih maksimum 0,34 detik untuk 2.740 pasangan (`tools/validasi_rute_vs_qneat3.csv`).
+* Skor dashboard dibandingkan dengan `hasil_tahap9.gpkg` untuk 4.285 grid × 20 tujuan: selisih maksimum 0,005 (pembulatan 2 desimal), kelas sama di 85.700 dari 85.700 pasangan. Contoh G0001 ke TP-001: skor 13,39, kelas 1 (jaringan terkoreksi, tanpa ruas 4078). Jalankan ulang dengan `node tools/test_scoring.js . tools/acuan_tahap9.csv`.
+* Semua data OD berasal dari QNEAT3 pada jaringan terkoreksi (6.967 ruas, ruas 4078 di sekitar Fakultas Teknik dihapus karena di lapangan tidak ada atau tidak tersambung).
+* Waktu rute yang digambar dibandingkan dengan `od_kos_waktu` QNEAT3 jaringan terkoreksi: selisih maksimum 0,34 detik untuk 2.740 pasangan (`tools/validasi_rute_vs_qneat3.csv`).
 * ID halte di OD tim (H001 sampai H048) dipetakan ke ID layer (HL-001 sampai HL-048). Urutannya sama. Pemetaan dicek ulang dengan jarak jaringan pada 25 grid acak (`tools/cek_id_halte.csv`).
 * Tiga grid yang NULL ke faskes (G3126, G3169, G3214) memakai nilai perbaikan Tahap 7 ke FK-001.
 
