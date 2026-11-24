@@ -94,3 +94,22 @@ footer{padding:5px 14px;font-size:11px;color:var(--mut);background:#e9e4d3}
 .crit small.wt{color:var(--mut);font-weight:400}
 .crit tr.tot td{font-weight:600;border-top:2px solid var(--line)}
 .crit tr.tot td:first-child{text-align:left}
+
+/* ---- Tahap 2: perbaikan error ---- */
+:root{--nav-h:54px;--focus:#1d4ed8}
+/* Gulir otomatis tidak menaruh peta atau panel di bawah navigasi yang menempel */
+.mapwrap{scroll-margin-top:var(--nav-h)}.panel section{scroll-margin-top:calc(var(--nav-h) + 8px)}
+/* Foto berasio tetap supaya pop-up tidak memanjang setelah foto selesai dimuat */
+.kphoto{aspect-ratio:16/10;height:auto;max-height:none;object-fit:cover;background:#e9e4d3}
+.leaflet-popup-content .kphoto{margin-bottom:8px}
+/* Fokus keyboard selalu terlihat */
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.nav :focus-visible{outline-color:#fff}
+/* Tombol Panduan terbaca jelas di semua langkah */
+.ob-btns button:not(.link){min-height:44px;padding:10px 16px;color:var(--ink);font-weight:600}
+.ob-btns button.primary:not(.link){color:#fff;background:var(--forest);border-color:var(--forest)}
+.ob-btns button:not(.link):disabled{opacity:1;color:#69746d;background:#f1f0ea;border-color:#e2e0d8}
+.ob-btns .link{min-height:44px;padding:10px 4px;color:var(--forest)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
+/* Atribusi OSM wajib terlihat: legenda di ponsel diletakkan di atas baris atribusi */
+@media(max-width:960px){.legend{bottom:30px}}

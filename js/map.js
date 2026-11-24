@@ -21,8 +21,8 @@ const MapView = (() => {
   }
   function init() {
     map = L.map('map', { zoomControl: true, preferCanvas: true, zoomSnap: 0.25 }).setView(CONFIG.center, CONFIG.zoom);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19,
-      attribution: '&copy; OpenStreetMap &copy; CARTO' }).addTo(map);
+    const b = CONFIG.basemap;
+    L.tileLayer(b.url, { maxZoom: b.maxZoom, attribution: b.attribution }).addTo(map);
     routeGroup = L.layerGroup().addTo(map);
   }
   const classColor = k => (CONFIG.classes.find(c => c.k === k) || {}).color || '#9ca3af';
@@ -50,8 +50,14 @@ const MapView = (() => {
     const cfg = CONFIG.layers[key];
     const prev = layers[key], was = prev && map.hasLayer(prev); if (prev) map.removeLayer(prev);
     const lyr = L.geoJSON(fc, { pointToLayer: (f, ll) => L.marker(ll, { icon: icon(key, key === 'fakultas' ? 26 : 20) }),
-      onEachFeature: (f, l) => { l.bindPopup(() => popupFn(f.properties), { maxWidth: 300 }); if (onClick) l.on('click', () => onClick(f.properties)); } });
+      onEachFeature: (f, l) => { l.bindPopup(() => popupFn(f.properties), popupOpts()); if (onClick) l.on('click', () => onClick(f.properties)); } });
     layers[key] = lyr; if (was) lyr.addTo(map); return lyr;
+  }
+  /* Pop-up tidak boleh lebih tinggi dari ruang peta: isi yang panjang digulir di dalam pop-up. */
+  function popupOpts() {
+    const el = map.getContainer(), h = el.clientHeight || 500, w = el.clientWidth || 360;
+    return { maxWidth: Math.min(300, w - 60), maxHeight: Math.max(220, Math.min(380, Math.round(h * 0.62))),
+             autoPanPaddingTopLeft: [12, 16], autoPanPaddingBottomRight: [12, 16] };
   }
   function toggle(key, on) { const l = layers[key]; if (!l) return; on ? l.addTo(map) : map.removeLayer(l); if (key !== 'grid' && gridLayer && on) gridLayer.bringToBack(); if (boundary) boundary.bringToFront(); }
   function focusGrid(id) { if (gridById[id]) map.fitBounds(gridById[id].getBounds(), { maxZoom: 17, padding: [30, 30] }); }

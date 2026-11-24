@@ -2,7 +2,8 @@
 <html lang="id">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SINDUADI SPATIAL · Dashboard Aksesibilitas Kos</title>
+<title>SINDUADI SPATIAL · Dashboard Aksesibilitas Kost</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="lib/leaflet/leaflet.css">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -37,14 +38,14 @@
     <section><h2>Layer peta</h2><div id="layerList"></div></section>
     <details class="status" id="statusPanel"><summary>Status data <span id="statusBadge" class="badge">…</span></summary><ul id="statusList"></ul></details>
   </aside>
-  <section class="mapwrap"><div id="map"></div><div id="busy" class="busy" hidden>Memproses…</div><div id="routeBar" class="routebar" hidden></div><div id="legend" class="legend"></div></section>
+  <section class="mapwrap"><div id="map"></div><div id="busy" class="busy" role="status" aria-live="polite">Memuat data…</div><div id="routeBar" class="routebar" hidden></div><div id="legend" class="legend"></div></section>
   <aside class="panel right">
     <section><h2>Ringkasan</h2>
-      <div class="stats"><div><b id="gridCount">–</b><span>Grid</span></div><div><b id="accCount">–</b><span>Titik akomodasi</span></div><div><b id="kosCount">–</b><span>Kos</span></div><div><b id="inapCount">–</b><span>Penginapan</span></div></div>
+      <div class="stats"><div><b id="gridCount">–</b><span>Grid</span></div><div><b id="accCount">–</b><span>Titik akomodasi</span></div><div><b id="kosCount">–</b><span>Kost</span></div><div><b id="inapCount">–</b><span>Penginapan</span></div></div>
       <p class="facinfo">Tujuan: <b id="facInfo">–</b></p></section>
     <section><h2>Sebaran kelas</h2><div id="classDist"></div>
     </section>
-    <section><h2>Peringkat grid</h2><label class="chk inline"><input type="checkbox" id="onlyKos"> Hanya grid yang berisi kos</label><div id="rankingList" class="ranking"></div></section>
+    <section><h2>Peringkat grid</h2><label class="chk inline"><input type="checkbox" id="onlyKos"> Hanya grid yang berisi kost</label><div id="rankingList" class="ranking"></div></section>
     <section><h2>Detail grid</h2><div id="gridDetail"></div></section>
     <section><h2>Detail akomodasi</h2><div id="kosDetail"></div></section>
   </aside>
@@ -55,17 +56,17 @@
     <div class="hero-text">
       <p class="eyebrow">WebGIS · Teknik Geodesi UGM</p>
       <h1>SINDUADI SPATIAL</h1>
-      <h2>Dashboard Spasial Persebaran dan Aksesibilitas Kos dan Penginapan</h2>
+      <h2>Dashboard Spasial Persebaran dan Aksesibilitas Kost dan Penginapan</h2>
       <p class="loc">Kalurahan Sinduadi, Kapanewon Mlati, Kabupaten Sleman</p>
-      <p>Bandingkan 4.285 petak kawasan dan 137 kos/penginapan berdasarkan waktu tempuh ke 20 gerbang kampus UGM serta jarak ke halte, minimarket, dan fasilitas kesehatan melalui jaringan jalan.</p>
+      <p>Bandingkan 4.285 petak kawasan dan 137 kost dan penginapan berdasarkan waktu tempuh ke 20 gerbang kampus UGM serta jarak ke halte, minimarket, dan fasilitas kesehatan melalui jaringan jalan.</p>
       <div class="cta"><button class="primary big" data-action="start">Mulai Eksplorasi</button><a href="#" class="ghost" data-view="about">Tentang Penelitian</a></div>
     </div>
-    <svg class="hero-art" viewBox="0 0 520 420" role="img" aria-label="Ilustrasi grid kawasan, jaringan jalan, dan lokasi kos">
+    <svg class="hero-art" viewBox="0 0 520 420" role="img" aria-label="Ilustrasi grid kawasan, jaringan jalan, dan lokasi kost">
       <defs><clipPath id="hc"><rect width="520" height="420" rx="22"/></clipPath></defs>
       <g clip-path="url(#hc)"><rect width="520" height="420" fill="#0f3d24"/>
-        <g opacity=".9"><rect x="40" y="40" width="110" height="100" fill="#2fbf5b"/><rect x="150" y="40" width="110" height="100" fill="#8fd14f"/><rect x="260" y="40" width="110" height="100" fill="#e6c23a"/><rect x="370" y="40" width="110" height="100" fill="#f0a23a"/>
-        <rect x="40" y="140" width="110" height="100" fill="#8fd14f"/><rect x="150" y="140" width="110" height="100" fill="#2fbf5b"/><rect x="260" y="140" width="110" height="100" fill="#8fd14f"/><rect x="370" y="140" width="110" height="100" fill="#e6c23a"/>
-        <rect x="40" y="240" width="110" height="100" fill="#e6c23a"/><rect x="150" y="240" width="110" height="100" fill="#8fd14f"/><rect x="260" y="240" width="110" height="100" fill="#e0793a"/><rect x="370" y="240" width="110" height="100" fill="#e0393e"/></g>
+        <g opacity=".9"><rect x="40" y="40" width="110" height="100" fill="#2f6b47"/><rect x="150" y="40" width="110" height="100" fill="#86b46a"/><rect x="260" y="40" width="110" height="100" fill="#ecd37a"/><rect x="370" y="40" width="110" height="100" fill="#e3924a"/>
+        <rect x="40" y="140" width="110" height="100" fill="#86b46a"/><rect x="150" y="140" width="110" height="100" fill="#2f6b47"/><rect x="260" y="140" width="110" height="100" fill="#86b46a"/><rect x="370" y="140" width="110" height="100" fill="#ecd37a"/>
+        <rect x="40" y="240" width="110" height="100" fill="#ecd37a"/><rect x="150" y="240" width="110" height="100" fill="#86b46a"/><rect x="260" y="240" width="110" height="100" fill="#e3924a"/><rect x="370" y="240" width="110" height="100" fill="#b5452f"/></g>
         <g fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="3" stroke-linecap="round"><path d="M20 200 C140 170 220 250 330 210 S470 120 510 150"/><path d="M110 20 C130 120 90 230 150 330 S170 400 190 410"/><path d="M330 20 C320 110 360 200 330 210 S350 330 400 410"/></g>
         <path d="M95 175 L150 200 L215 215 L330 210 L345 300" fill="none" stroke="#e11d48" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
         <g fill="#2563eb" stroke="#fff" stroke-width="3"><circle cx="95" cy="175" r="9"/><circle cx="215" cy="100" r="8"/><circle cx="300" cy="260" r="8"/><circle cx="420" cy="190" r="8"/><circle cx="170" cy="290" r="8"/></g>

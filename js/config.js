@@ -1,6 +1,14 @@
 /* KONFIGURASI: ubah di sini (bukan di kode lain) bila nama file/kolom berbeda. */
 const CONFIG = {
   center: [-7.7585, 110.3735], zoom: 15,
+  // Peta dasar OpenStreetMap standar. Patuhi kebijakan tile OSM: tanpa unduhan massal dan tanpa prefetch berlebihan.
+  basemap: {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
+  },
+  // Label tampilan untuk nilai kolom jenis. Isi data tidak diubah, hanya teks yang tampil di antarmuka.
+  typeLabels: { 'Kos Putri': 'Kost Putri', 'Kos Putra': 'Kost Putra' },
   // Semua file di folder data/ diekspor dalam EPSG:4326 (lon/lat). Bila Anda mengekspor ulang dari QGIS dalam
   // UTM 49S, ubah menjadi 'EPSG:32749'; konversi dilakukan sekali saat data dimuat (js/crs.js).
   sourceCRS: 'EPSG:4326',
@@ -49,7 +57,7 @@ const CONFIG = {
   // Layer titik. index: true = dipakai dalam skor. Fasilitas lain hanya ditampilkan.
   layers: {
     fakultas:     { label: 'Tujuan kampus (gerbang/titik jemput)', color: '#14532d', icon: 'cap' },
-    akomodasi:    { label: 'Kos / Penginapan',  color: '#2563eb', icon: 'house' },
+    akomodasi:    { label: 'Kost dan penginapan',  color: '#2563eb', icon: 'house' },
     halte:        { label: 'Halte Trans Jogja', color: '#f97316', icon: 'bus',      file: 'data/fasum/halte.geojson',        id: 'id_fas', name: 'nama', index: true },
     minimarket:   { label: 'Minimarket',        color: '#0891b2', icon: 'cart',     file: 'data/fasum/minimarket.geojson',   id: 'id_fas', name: 'nama', index: true },
     kesehatan:    { label: 'Fasilitas kesehatan', color: '#dc2626', icon: 'cross',  file: 'data/fasum/kesehatan.geojson',    id: 'id_fas', name: 'nama', index: true },
