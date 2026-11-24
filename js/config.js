@@ -7,6 +7,10 @@ const CONFIG = {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
   },
+  // Tampilan: batas lebar ponsel (px) untuk lembar bawah dan tata letak bertumpuk, ukuran kotak ketuk ikon (px),
+  // dan zoom minimum ikon tampil penuh (di bawahnya lingkaran ikon diperkecil agar warna grid terbaca).
+  // dataDelayMax: batas tunggu (ms) sebelum data diunduh, agar halaman awal dan font tampil lebih dulu.
+  ui: { mobileMax: 960, pinSize: 24, pinSizeTujuan: 28, pinFullZoom: 16, dataDelayMax: 1500 },
   // Label tampilan untuk nilai kolom jenis. Isi data tidak diubah, hanya teks yang tampil di antarmuka.
   typeLabels: { 'Kos Putri': 'Kost Putri', 'Kos Putra': 'Kost Putra' },
   // Semua file di folder data/ diekspor dalam EPSG:4326 (lon/lat). Bila Anda mengekspor ulang dari QGIS dalam

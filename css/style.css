@@ -128,3 +128,63 @@ input[type=range],input[type=checkbox]{accent-color:var(--primary)}
 .stats b{color:var(--nav-bg)}
 .leaflet-tooltip,.leaflet-popup-content{font-family:var(--font)}
 .leaflet-container a.leaflet-popup-close-button{color:var(--mut)}.leaflet-container a.leaflet-popup-close-button:hover{color:var(--ink)}
+
+/* ---- Tahap 4b: ponsel ---- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+:root{--attr-h:22px}
+/* Ikon titik: kotak ketuk tetap, lingkaran mengecil pada zoom rendah (kelas z-low dari map.js) */
+.pin-in{width:100%;height:100%;box-sizing:border-box;transition:transform .15s ease-out}
+.z-low .pin-in{transform:scale(.72)}
+.leaflet-marker-icon.pin:focus-visible{outline:3px solid var(--focus);outline-offset:1px;border-radius:50%}
+/* Lembar bawah untuk detail kost, fasilitas, dan ringkasan grid di layar sempit. Tinggi maksimum separuh peta. */
+.sheet{position:absolute;left:0;right:0;bottom:var(--attr-h);z-index:900;max-height:50%;display:flex;flex-direction:column;background:var(--card);border-radius:12px 12px 0 0;border-top:1px solid var(--line);box-shadow:0 -2px 10px #0F2A441f}
+.sheet[hidden]{display:none}
+.sheet-bar{position:relative;display:flex;justify-content:center;align-items:flex-start;min-height:32px;padding-top:8px;flex:none}
+.sheet-grip{width:40px;height:4px;border-radius:2px;background:var(--line-strong)}
+.sheet-close{position:absolute;right:4px;top:0;width:44px;height:44px;border:0;background:none;font-size:28px;line-height:1;color:var(--mut)}
+.sheet-body{overflow:auto;overscroll-behavior:contain;padding:0 16px 12px}
+.sheet-body .pop>b:first-child{display:inline-block;font-size:16px;margin:0 40px 4px 0}
+.sheet-body .kphoto-wrap{aspect-ratio:5/2}
+.sheet-body .pop table{width:100%}.sheet-body .pop td{padding:3px 8px 3px 0;vertical-align:top}
+.sheet-body .mini{margin-top:8px}
+@media (max-width:960px){
+  body{font-size:15px}
+  .mapwrap{height:min(62svh,calc(100svh - var(--nav-h) - 72px));min-height:300px}
+  /* Teks minimal 14 px */
+  label,.hint,.wrow div,.chk,.chk small,.chk em,.facinfo,.scoreline,.crit,.ctab,.koslist small,.rt small,.rs b,.near,.status ul,.badge,.tag,.wmode,
+  .lg-toggle,.legend,.lg-h,.lg-note,.pill,footer,.pop td,.routebar,.routebar small,.mini,.stats span,.eyebrow,.leaflet-control-attribution,.kphoto-wrap.nofoto figcaption,h4{font-size:14px}
+  .stats b{font-size:22px}
+  /* Target sentuh minimal 44 x 44 px */
+  .burger{width:44px;height:44px;display:none;place-items:center;padding:0}
+  .nav ul a{display:flex;align-items:center;min-height:44px}
+  select{min-height:44px}
+  input[type=range]{height:44px;margin:0}
+  .chk{min-height:44px}.chk input[type=checkbox]{width:22px;height:22px;flex:none}
+  .link,#resetWeights{min-height:44px;display:inline-flex;align-items:center;padding:0 4px}
+  .mini{min-height:44px;padding:8px 14px}
+  .rk{min-height:52px}.more,.route-btn,.wide{min-height:44px}
+  .lg-toggle{min-height:44px;padding:10px 12px}
+  .status summary{min-height:44px;display:flex;align-items:center}
+  .faq summary{min-height:44px;display:flex;align-items:center}
+  .cta .ghost{min-height:44px;display:inline-flex;align-items:center}
+  .leaflet-touch .leaflet-bar a{width:44px;height:44px;line-height:44px;font-size:22px}
+  .koslist li{gap:8px}
+  /* Legenda terbuka tidak menutupi lebih dari separuh peta */
+  .legend{max-width:220px}.legend .lg-body{max-height:calc(50svh - 120px);overflow:auto}
+  .routebar{max-width:calc(100% - 72px)}
+  .leaflet-control-attribution{line-height:var(--attr-h)}
+}
+@media (max-width:960px){.burger{display:grid}}
+/* Ponsel mendatar: peta menempel di kiri, panel digulir di kanan, sehingga halaman tetap bisa digulir tanpa menyentuh peta */
+@media (max-width:960px) and (orientation:landscape) and (max-height:540px){
+  .layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);align-items:start}
+  .mapwrap{grid-column:1;grid-row:1 / span 2;position:sticky;top:var(--nav-h);height:calc(100svh - var(--nav-h));min-height:0;align-self:start}
+  .panel.left{grid-column:2;grid-row:1}.panel.right{grid-column:2;grid-row:2}
+}
+@media (max-width:960px){
+  .chk.inline{font-size:14px}
+  .brand{min-height:44px}
+  /* Legenda terbuka paling tinggi separuh tinggi peta (peta ponsel tegak 62svh) */
+  .legend .lg-body{max-height:calc(31svh - 52px)}
+}
+@media (max-width:960px){.crit small,.crit small.wt,.crit .near,.sheet-body small{font-size:14px}}

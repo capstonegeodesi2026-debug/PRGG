@@ -4,9 +4,13 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SINDUADI SPATIAL · Dashboard Aksesibilitas Kost</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="lib/leaflet/leaflet.css">
+<!-- Gaya Leaflet hanya dibutuhkan dashboard, dimuat tanpa memblokir halaman awal -->
+<link rel="stylesheet" href="lib/leaflet/leaflet.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="lib/leaflet/leaflet.css"></noscript>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Font dimuat tanpa memblokir render. Sebelum Inter siap, teks memakai font sistem. -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -38,7 +42,8 @@
     <section><h2>Layer peta</h2><div id="layerList"></div></section>
     <details class="status" id="statusPanel"><summary>Status data <span id="statusBadge" class="badge">…</span></summary><ul id="statusList"></ul></details>
   </aside>
-  <section class="mapwrap"><div id="map"></div><div id="busy" class="busy" role="status" aria-live="polite">Memuat data…</div><div id="routeBar" class="routebar" hidden></div><div id="legend" class="legend"></div></section>
+  <section class="mapwrap"><div id="map"></div><div id="busy" class="busy" role="status" aria-live="polite">Memuat data…</div><div id="routeBar" class="routebar" hidden></div><div id="legend" class="legend"></div>
+    <section id="sheet" class="sheet" role="region" aria-label="Detail" hidden><div class="sheet-bar"><span class="sheet-grip" aria-hidden="true"></span><button type="button" class="sheet-close" aria-label="Tutup detail">&times;</button></div><div class="sheet-body" id="sheetBody"></div></section></section>
   <aside class="panel right">
     <section><h2>Ringkasan</h2>
       <div class="stats"><div><b id="gridCount">–</b><span>Grid</span></div><div><b id="accCount">–</b><span>Titik akomodasi</span></div><div><b id="kosCount">–</b><span>Kost</span></div><div><b id="inapCount">–</b><span>Penginapan</span></div></div>
@@ -87,7 +92,7 @@
 </div>
 
 <footer>Skor aksesibilitas = persentil tiap kriteria × bobot AHP (OD Matrix QNEAT3, jaringan jalan Sleman dan Kota Yogyakarta). Data: Kelompok 7 Proyek Rekayasa Geodesi-Geoinformatika UGM.</footer>
-<script src="lib/leaflet/leaflet.js"></script>
-<script src="js/config.js"></script><script src="js/crs.js"></script><script src="js/scoring.js"></script><script src="js/map.js"></script><script src="js/app.js"></script><script src="js/pages.js"></script>
+<script src="lib/leaflet/leaflet.js" defer></script>
+<script src="js/config.js" defer></script><script src="js/crs.js" defer></script><script src="js/scoring.js" defer></script><script src="js/map.js" defer></script><script src="js/app.js" defer></script><script src="js/pages.js" defer></script>
 </body>
 </html>

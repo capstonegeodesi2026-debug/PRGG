@@ -50,6 +50,16 @@
   }
 
   MapView.init();
+  const yieldUI = () => new Promise(r => setTimeout(r, 0));   // jeda singkat agar pemrosesan data tidak menjadi satu tugas panjang
+  // Data (sekitar 4 MB sebelum kompresi) baru diunduh setelah halaman awal dan font tampil, paling lama menunggu CONFIG.ui.dataDelayMax ms,
+  // agar unduhan data tidak berebut jaringan dengan tampilan pertama. Indikator "Memuat data" tetap tampil di dashboard.
+  await new Promise(r => document.readyState === 'complete' ? r() : addEventListener('load', r, { once: true }));
+  await Promise.race([document.fonts ? document.fonts.ready : Promise.resolve(), new Promise(r => setTimeout(r, CONFIG.ui.dataDelayMax))]);
+  await new Promise(r => {   // tunggu sampai halaman awal benar-benar tergambar (first contentful paint)
+    const t = setTimeout(r, CONFIG.ui.dataDelayMax);
+    try { const po = new PerformanceObserver(l => { if (l.getEntriesByName('first-contentful-paint').length) { po.disconnect(); clearTimeout(t); requestAnimationFrame(() => setTimeout(r, 0)); } });
+      po.observe({ type: 'paint', buffered: true }); } catch (e) { clearTimeout(t); requestAnimationFrame(() => setTimeout(r, 0)); }
+  });
   const fasumKeys = Object.keys(CONFIG.layers).filter(k => CONFIG.layers[k].file);
   const [grid, kos, fac, batas] = await Promise.all([
     loadJSON(CONFIG.files.grid, 'Grid', ['Polygon', 'MultiPolygon']),
@@ -78,7 +88,7 @@
     }
     const src = c.dest === 'fakultas' ? fac : fasum[c.dest], idf = c.dest === 'fakultas' ? F.facId : CONFIG.layers[c.dest]?.id;
     S.destIds[c.key] = src ? new Set(src.features.map(f => f.properties[idf])) : null;
-    const parsed = await loadCSV(c.csv, 'OD ' + c.label);
+    const parsed = await loadCSV(c.csv, 'OD ' + c.label); await yieldUI();
     S.tables[c.key] = parsed ? Scoring.buildTable(parsed, CONFIG.csv, 'OD ' + c.label, issues) : null;
     const t = S.tables[c.key]; if (!t) continue;
     const unk = [...t.pair.keys()].filter(o => !S.gridSet.has(o));
@@ -93,8 +103,9 @@
   }
 
   /* ---------- Peta ---------- */
+  await yieldUI();
   if (batas) MapView.setBoundary(batas);
-  if (grid) MapView.setGrid(grid, id => select(id, true));
+  if (grid) MapView.setGrid(grid, id => select(id, true)); await yieldUI();
   const popBase = (title, rows) => `<div class="pop"><b>${esc(title)}</b><table>${rows.filter(r => r[1] !== undefined && r[1] !== null && r[1] !== '').map(r => `<tr><td>${esc(r[0])}</td><td>${r[2] ? r[1] : esc(r[1])}</td></tr>`).join('')}</table></div>`;
   const isInap = p => /penginapan|hotel|homestay|guest/i.test(p[F.kosType] || '');
   const facCol = fid => String(fid || '').replace('-', '');          // TP-001 -> TP001
@@ -125,14 +136,17 @@
       ['Lokasi', link ? `<a href="${esc(link)}" target="_blank" rel="noopener">Buka di Google Maps</a>` : null, true]]; };
   function buildKos() { S.kosIdx = new Map(); visKos().forEach(f => { const g = f.properties[F.kosGrid]; if (!S.kosIdx.has(g)) S.kosIdx.set(g, []); S.kosIdx.get(g).push(f); });
     if (kos) MapView.setPoints('akomodasi', { ...kos, features: visKos() },
-    p => photo(p) + popBase(p[F.kosName] || p[F.kosId], kosRows(p)) + `<button class="mini" data-route="${esc(p[F.kosId])}">Lihat rute ke tujuan</button>`, p => selectKos(p[F.kosId])); }
-  if (fac) MapView.setPoints('fakultas', fac, p => popBase(p[F.facName] || p[F.facId], [['Kode', p[F.facId]], ['Singkatan', p.singkatan], ['Jenis', p.jenis]]));
+    p => photo(p) + popBase(p[F.kosName] || p[F.kosId], kosRows(p)) + `<button class="mini" data-route="${esc(p[F.kosId])}">Lihat rute ke tujuan</button>`, p => selectKos(p[F.kosId]),
+    p => `${p[F.kosName] || p[F.kosId]}, ${typeLabel(p[F.kosType]) || 'akomodasi'}`); }
+  if (fac) MapView.setPoints('fakultas', fac, p => popBase(p[F.facName] || p[F.facId], [['Kode', p[F.facId]], ['Singkatan', p.singkatan], ['Jenis', p.jenis]]), null,
+    p => `Tujuan kampus: ${p[F.facName] || p[F.facId]}`);
   fasumKeys.forEach(k => { const c = CONFIG.layers[k]; if (fasum[k]) MapView.setPoints(k, fasum[k], p => popBase(p[c.name] || p[c.id],
-    [['Kategori', c.label], ['ID', p[c.id]], ['Keterangan', p.keterangan], ['Peran', c.index ? 'Dipakai dalam skor aksesibilitas' : 'Informasi pendukung (tidak masuk skor)']])); });
+    [['Kategori', c.label], ['ID', p[c.id]], ['Keterangan', p.keterangan], ['Peran', c.index ? 'Dipakai dalam skor aksesibilitas' : 'Informasi pendukung (tidak masuk skor)']]), null,
+    p => `${c.label}: ${p[c.name] || p[c.id]}`); });
 
   const layerKeys = ['grid', ...Object.keys(CONFIG.layers)];
   S.present = { grid: !!grid, akomodasi: !!kos, fakultas: !!fac, ...Object.fromEntries(fasumKeys.map(k => [k, !!fasum[k]])) };
-  const small = innerWidth < 960;   // di ponsel hanya kost dan tujuan yang tampil di awal agar peta tidak penuh ikon
+  const small = innerWidth <= CONFIG.ui.mobileMax;   // di ponsel hanya kost dan tujuan yang tampil di awal agar peta tidak penuh ikon
   const onByDefault = k => S.present[k] && !(CONFIG.layers[k] && (CONFIG.layers[k].off || (small && CONFIG.layers[k].file)));
   $('layerList').innerHTML = layerKeys.map(k => { const lab = k === 'grid' ? 'Grid kelas aksesibilitas' : CONFIG.layers[k].label, ok = S.present[k],
       n = k === 'grid' ? '' : k === 'akomodasi' ? (kos ? kos.features.length : '') : k === 'fakultas' ? (fac ? fac.features.length : '') : (fasum[k] ? fasum[k].features.length : '');
@@ -151,7 +165,7 @@
   const grp = u => CONFIG.priceBands.filter(b => b.unit === u && units.has(u));
   $('priceSelect').innerHTML = '<option value="">Semua harga</option>' + ['bulan', 'malam'].map(u => grp(u).length ? `<optgroup label="${u === 'bulan' ? 'Kost (per bulan)' : 'Penginapan (per malam)'}">${grp(u).map(b => `<option value="${b.id}">${esc(b.label)}</option>`).join('')}</optgroup>` : '').join('');
   $('priceSelect').disabled = !kos || !units.size;
-  buildKos();
+  buildKos(); await yieldUI();
   layerKeys.forEach(k => { if (onByDefault(k)) MapView.toggle(k, true); });
 
   CONFIG.criteria.forEach(c => S.weights[c.key] = c.weight);
@@ -190,6 +204,7 @@
   const kosIn = g => S.kosIdx.get(g) || [];
   const RANK_STEP = 100; S.rankLimit = RANK_STEP;
   function recalc() {
+    MapView.closeSheet();   // isi lembar bawah bergantung pada tujuan dan bobot
     const fid = $('facultySelect').value;
     S.results = Scoring.compute(S.gridIds, S.tables, CONFIG.criteria, fid, S.weights, S.gridProps);
     S.byGrid = new Map(S.results.map(r => [r.grid_id, r])); S.rankLimit = RANK_STEP;
@@ -218,8 +233,16 @@
   function refreshLegend() {
     MapView.legend($('legend'), Object.keys(CONFIG.layers).filter(k => S.present[k] && document.querySelector(`[data-layer="${k}"]`)?.checked), S.results.range);
   }
-  function select(g, zoom) { S.selected = g; if (zoom) MapView.focusGrid(g); MapView.selectGrid(g); renderRanking(); renderDetail(); if (innerWidth < 960) $('gridDetail').scrollIntoView({ behavior: smooth() }); }
-  $('rankingList').addEventListener('click', e => { if (e.target.closest('[data-more]')) { S.rankLimit += RANK_STEP; renderRanking(); return; } const b = e.target.closest('[data-grid]'); if (b) select(b.dataset.grid, true); });
+  /* fromList: dipilih dari daftar peringkat (di ponsel peta digulir ke layar). Di ponsel ringkasan grid tampil di lembar bawah
+     sebagai padanan ketuk tooltip, dan halaman tidak lagi melompat ke panel Detail grid. */
+  function select(g, zoom, fromList) { S.selected = g; if (zoom) MapView.focusGrid(g); MapView.selectGrid(g); renderRanking(); renderDetail();
+    if (MapView.sheetMode()) { if (fromList) document.querySelector('.mapwrap').scrollIntoView({ behavior: smooth() }); MapView.openSheet(gridSheet(g), 'Ringkasan grid ' + g); } }
+  function gridSheet(g) { const r = S.byGrid && S.byGrid.get(g), c = r && clsOf(r.kelas), n = kosIn(g).length;
+    return `<div class="pop"><b>${esc(g)}</b> ${r && r.score !== null ? `<span class="pill" style="background:${c.color};color:${r.kelas >= 4 || r.kelas === 1 ? '#fff' : '#13202D'}">kelas ${r.kelas} · ${esc(c.label)}</span>` : '<span class="pill">skor belum lengkap</span>'}
+      <table><tr><td>Skor</td><td>${r && r.score !== null ? num(r.score, 1) + ' dari 100' : '-'}</td></tr><tr><td>Peringkat</td><td>${r && r.rank ? r.rank + ' dari ' + num(S.results.filter(x => x.score !== null).length) : '-'}</td></tr>
+      <tr><td>Tujuan</td><td>${esc(facName())}</td></tr><tr><td>Akomodasi</td><td>${n} titik</td></tr></table></div>
+      <button class="mini" data-goto="gridDetail">Lihat rincian kriteria</button>`; }
+  $('rankingList').addEventListener('click', e => { if (e.target.closest('[data-more]')) { S.rankLimit += RANK_STEP; renderRanking(); return; } const b = e.target.closest('[data-grid]'); if (b) select(b.dataset.grid, true, true); });
   function renderDetail() {
     const el = $('gridDetail'), r = S.byGrid && S.byGrid.get(S.selected);
     if (!r) { el.innerHTML = '<p class="hint">Pilih grid pada peta atau daftar peringkat.</p>'; return; }
@@ -260,7 +283,7 @@
     const fid = $('facultySelect').value, kf = S.kosById[kosId], ff = fac && fac.features.find(f => f.properties[F.facId] === fid);
     if (!kf) return;
     if (S.kosSel !== kosId) { S.kosSel = kosId; renderKos(); }
-    MapView.clearRoute();
+    MapView.clearRoute(); MapView.closeSheet();
     if (!ff) { S.route = { kind: 'warn', html: '<div>Pilih tujuan kampus yang tersedia dalam data.</div>' }; renderRouteBar(); return; }
     const kn = kf.properties[F.kosName] || kosId, fn = ff.properties[F.facName] || fid;
     S.route = { kind: 'ok', html: '<div>Memuat rute…</div>' }; renderRouteBar();
@@ -278,7 +301,8 @@
   document.addEventListener('click', e => {
     const r = e.target.closest('[data-route]'); if (r) { showRoute(r.dataset.route); return; }
     if (e.target.closest('[data-closeroute]')) return resetRoute();
-    const k = e.target.closest('[data-kos]'); if (k) selectKos(k.dataset.kos, true);
+    const k = e.target.closest('[data-kos]'); if (k) { if (MapView.sheetMode()) document.querySelector('.mapwrap').scrollIntoView({ behavior: smooth() }); selectKos(k.dataset.kos, true); return; }
+    const gt = e.target.closest('[data-goto]'); if (gt) { MapView.closeSheet(); const el = $(gt.dataset.goto); if (el) { el.parentElement.scrollIntoView({ behavior: smooth() }); } }
   });
 
   recalc(); renderStatus();

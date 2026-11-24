@@ -35,7 +35,7 @@ const Pages = (() => {
   function show(v) {
     document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + v));
     document.querySelectorAll('[data-view]').forEach(a => a.classList.toggle('current', a.dataset.view === v));
-    if (v === 'dashboard' && typeof MapView !== 'undefined' && !show.fitted) { show.fitted = true; setTimeout(() => MapView.fit(), 50); }
+    if (v === 'dashboard' && typeof MapView !== 'undefined') { MapView.showBasemap(); if (!show.fitted) { show.fitted = true; setTimeout(() => MapView.fit(), 50); } }
     $('navLinks').classList.remove('open'); $('burger').setAttribute('aria-expanded', 'false'); window.scrollTo(0, 0);
   }
   let step = 0;
